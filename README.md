@@ -15,7 +15,8 @@ skills/   에이전트가 읽을 것.  집필·검수·설정집 3종
 hooks/    자동 검사 트리거.  Claude Code / Codex 각각
 AGENTS.md 에이전트 지침 단일 소스 ★ 양쪽 호스트가 읽음
 
-manuscript/ bible/ store/ server/ api/ web/   ← 아직 빈 폴더. P0부터 채웁니다
+manuscript/ api/ web/        ← 후속 단계에서 채웁니다
+server/ bible/ store/        ← P0 읽기 전용 인덱스 구현
 ```
 
 ## 문서
@@ -54,25 +55,22 @@ Claude Code와 Codex 양쪽에서 **한 벌로** 동작합니다.
 ```
 plugin.json                 agent-plugins 스키마 — Codex가 우선 인식
 .claude-plugin/plugin.json  Claude Code 매니페스트 — Codex도 폴백으로 읽음
-.mcp.json                   MCP 서버 선언  ← 직접 만들어야 함 (아래 참조)
+.mcp.json                   Claude Code용 프로젝트 MCP 설정
+.codex/config.toml          Codex용 프로젝트 MCP 설정
 AGENTS.md                   ★ 에이전트 지침 단일 소스. 양쪽이 읽음
 CLAUDE.md                   AGENTS.md를 가리키는 한 줄
 skills/                     Agent Skills 규격 6필드만 — 양쪽 + 46개 호스트
 hooks/                      run-check.sh 를 양쪽 훅이 공통 호출
 ```
 
-### `.mcp.json` 만들기
+### MCP 연결 확인
 
-```json
-{
-  "mcpServers": {
-    "storyai": {
-      "command": "python3",
-      "args": ["-m", "storyai.server"],
-      "env": { "STORYAI_DB": "${PROJECT_DIR}/store/story.db" }
-    }
-  }
-}
+저장소에는 Claude Code용 `.mcp.json`과 Codex용 `.codex/config.toml`이 모두 들어 있습니다.
+처음 열 때 프로젝트를 신뢰하고 MCP 실행을 승인한 다음 연결 상태를 확인합니다.
+
+```bash
+claude mcp list
+codex mcp list
 ```
 
 ## 문서 수정
@@ -95,3 +93,25 @@ python3 build/build.py
 **"한도영이 나오는 씬 전부"**가 답해지는 것.
 
 자세한 분해는 [개발계획서 §P0](docs/03-개발계획서.html#p0).
+
+## P0 개발 실행
+
+Python 3.12 이상에서 격리 환경을 만들고 개발 의존성을 설치합니다.
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+```
+
+설정집 파일 형식은 [`bible/README.md`](bible/README.md)를 따릅니다. 로더는 명시된
+YAML 메타데이터만 읽으며 내용을 추측하거나 자동 추출하지 않습니다.
+
+```bash
+.venv/bin/python -m server.load_bible
+.venv/bin/python -m pytest
+server/run-mcp.sh
+```
+
+마지막 명령은 stdio MCP 서버이므로 터미널에 대기하는 것이 정상입니다. Claude Code와
+Codex는 각자의 프로젝트 설정을 통해 동일한 `server/run-mcp.sh` 엔트리포인트를
+실행합니다.

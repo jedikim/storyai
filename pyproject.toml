@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "storyai"
+version = "0.1.0"
+description = "A narrative knowledge graph and MCP server for long-form fiction continuity."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastmcp>=2,<5",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<10",
+  "pytest-asyncio>=0.24,<2",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+storyai-load-bible = "server.load_bible:main"
+storyai-server = "server.app:main"
+
+[tool.setuptools.packages.find]
+include = ["server*", "storyai*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
