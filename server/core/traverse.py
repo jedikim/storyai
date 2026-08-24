@@ -284,7 +284,7 @@ class GraphStore:
             tags = self._group_rows(connection, "node_tag", "node", node_ids, "tag")
             features = self._feature_rows(connection, node_ids)
             evidence = self._evidence_rows(connection, node_ids)
-            visible_to = self._group_rows(connection, "visibility", "fact", node_ids, "viewer")
+            visibility = self._visibility_rows(connection, node_ids)
         result: list[dict[str, Any]] = []
         for node_id in node_ids:
             row = by_id.get(node_id)
@@ -296,7 +296,7 @@ class GraphStore:
                 tags=tags[node_id],
                 features=features[node_id],
                 evidence=evidence[node_id],
-                visible_to=visible_to[node_id],
+                visibility=visibility[node_id],
             )
             if include == "body":
                 item["body"] = self._read_evidence_body(evidence[node_id])
@@ -389,7 +389,7 @@ class GraphStore:
         tags: list[str],
         features: dict[str, Any],
         evidence: list[dict[str, Any]],
-        visible_to: list[str],
+        visibility: list[dict[str, Any]],
     ) -> dict[str, Any]:
         item = cls._brief(row)
         item.update(
@@ -401,7 +401,8 @@ class GraphStore:
                 "story_from": row["story_from"],
                 "story_to": row["story_to"],
                 "reveal_at": row["reveal_at"],
-                "visible_to": visible_to,
+                "visible_to": [entry["viewer"] for entry in visibility],
+                "visibility": visibility,
                 "evidence": evidence,
                 "origin": row["origin"],
                 "locked": bool(row["locked"]),
@@ -468,6 +469,30 @@ class GraphStore:
                     "start": row["start_off"],
                     "end": row["end_off"],
                     "quote": row["quote"],
+                }
+            )
+        return result
+
+    @staticmethod
+    def _visibility_rows(
+        connection: sqlite3.Connection, ids: tuple[str, ...]
+    ) -> defaultdict[str, list[dict[str, Any]]]:
+        placeholders = ",".join("?" for _ in ids)
+        rows = connection.execute(
+            f"""
+            SELECT fact, viewer, learned_at, pathway
+            FROM visibility WHERE fact IN ({placeholders})
+            ORDER BY fact, viewer
+            """,
+            ids,
+        ).fetchall()
+        result: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            result[row["fact"]].append(
+                {
+                    "viewer": row["viewer"],
+                    "learned_at": row["learned_at"],
+                    "pathway": row["pathway"],
                 }
             )
         return result

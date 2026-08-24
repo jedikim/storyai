@@ -30,6 +30,8 @@ class EdgeSpec:
     hard: bool
     src: str | None = None
     dst: str | None = None
+    constraint: str | None = None
+    max_per_dst: int | None = None
 
 
 class Ontology:
@@ -160,6 +162,8 @@ class Ontology:
                 hard=bool(item.get("hard", True)),
                 src=item.get("src"),
                 dst=item.get("dst"),
+                constraint=item.get("constraint"),
+                max_per_dst=item.get("max_per_dst"),
             )
         return result
 
@@ -169,3 +173,11 @@ class Ontology:
                 raise OntologyError(f"{spec.rel}.src가 알 수 없는 kind입니다: {spec.src}")
             if spec.dst and spec.dst != "span" and spec.dst not in self.kinds:
                 raise OntologyError(f"{spec.rel}.dst가 알 수 없는 kind입니다: {spec.dst}")
+            if spec.constraint not in {None, "dag", "acyclic"}:
+                raise OntologyError(f"{spec.rel}.constraint가 지원되지 않습니다: {spec.constraint}")
+            if spec.max_per_dst is not None and (
+                not isinstance(spec.max_per_dst, int)
+                or isinstance(spec.max_per_dst, bool)
+                or spec.max_per_dst < 1
+            ):
+                raise OntologyError(f"{spec.rel}.max_per_dst는 양의 정수여야 합니다")

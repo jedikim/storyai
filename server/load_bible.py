@@ -1,4 +1,4 @@
-"""Explicit YAML-frontmatter bible bootstrapper for P0."""
+"""Explicit YAML-frontmatter bible bootstrapper for deterministic graph input."""
 
 from __future__ import annotations
 
@@ -16,8 +16,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .core.address import parse_address
 from .core.database import connect_bootstrap, connect_read_only, initialize_database
+from .core.invariants import validate_graph
 from .core.merkle import advance_graph_state, ensure_graph_state, record_revision, refresh_node_cid
 from .core.ontology import Ontology
+from .core.ops import OperationApplier
 
 
 class BibleFormatError(ValueError):
@@ -35,6 +37,14 @@ class EdgeInput(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
+class VisibilityInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    viewer: str
+    learned_at: int | None = Field(default=None, ge=0)
+    pathway: Literal["direct", "observed", "told", "common"] = "direct"
+
+
 class NodeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -45,6 +55,7 @@ class NodeInput(BaseModel):
     aliases: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     features: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    visible_to: list[VisibilityInput] = Field(default_factory=list)
     props: dict[str, Any] = Field(default_factory=dict)
     edges: list[EdgeInput] = Field(default_factory=list)
     story_from: int | None = None
@@ -76,6 +87,7 @@ class BibleNode(BaseModel):
     aliases: list[str]
     tags: list[str]
     features: dict[str, dict[str, Any]]
+    visible_to: list[VisibilityInput]
     props: dict[str, Any]
     edges: list[EdgeInput]
     story_from: int | None
@@ -93,6 +105,17 @@ FOLDER_KINDS = {
     "scenes": "Scene",
     "rules": "Rule",
     "promises": "Promise",
+    "factions": "Faction",
+    "concepts": "Concept",
+    "events": "Event",
+    "beats": "Beat",
+    "chapters": "Chapter",
+    "acts": "Act",
+    "twists": "Twist",
+    "reveals": "Reveal",
+    "facts": "Fact",
+    "threads": "Thread",
+    "arcs": "Arc",
 }
 
 
@@ -145,7 +168,7 @@ class BibleLoader:
         inferred_kind = FOLDER_KINDS.get(path.parent.name.casefold())
         if item.kind is None and inferred_kind is None:
             raise BibleFormatError(f"kind를 지정하거나 표준 하위 폴더에 넣으세요: {path}")
-        kind = self.ontology.canonical_kind(item.kind or inferred_kind or "", p0_only=True)
+        kind = self.ontology.canonical_kind(item.kind or inferred_kind or "")
         title = (item.title or self._first_heading(body) or path.stem).strip()
         if not title:
             raise BibleFormatError(f"title을 결정할 수 없습니다: {path}")
@@ -156,6 +179,9 @@ class BibleLoader:
         node_id = parsed.value
         summary = self._summary(item.summary, body, title)
         tags = [tag if tag.startswith("#") else f"#{tag}" for tag in item.tags]
+        props = dict(item.props)
+        if kind == "Promise":
+            props.setdefault("status", "hypothetical")
         locked = item.locked
         if locked is None:
             locked = self.ontology.kinds[kind].default_locked
@@ -175,7 +201,7 @@ class BibleLoader:
             "aliases": sorted(item.aliases),
             "tags": sorted(tags),
             "features": item.features,
-            "props": item.props,
+            "props": props,
             "edges": canonical_edges,
             "story_from": item.story_from,
             "story_to": item.story_to,
@@ -183,6 +209,8 @@ class BibleLoader:
             "locked": locked,
             "body": body,
         }
+        if item.visible_to:
+            canonical["visible_to"] = [entry.model_dump(mode="json") for entry in item.visible_to]
         cid = hashlib.sha256(
             json.dumps(
                 canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -201,7 +229,8 @@ class BibleLoader:
             aliases=item.aliases,
             tags=tags,
             features=item.features,
-            props=item.props,
+            visible_to=item.visible_to,
+            props=props,
             edges=item.edges,
             story_from=item.story_from,
             story_to=item.story_to,
@@ -267,7 +296,75 @@ class BibleLoader:
                 row["id"]: row["kind"]
                 for row in connection.execute("SELECT id, kind FROM live_node").fetchall()
             }
+
+        def require_reference(value: Any, *, owner: str, expected: set[str] | None = None) -> None:
+            if not isinstance(value, str):
+                raise BibleFormatError(f"구조화 참조가 문자열이 아닙니다: {owner}")
+            parsed = parse_address(value, self.ontology)
+            target_kind = (
+                by_id[parsed.value].kind if parsed.value in by_id else existing.get(parsed.value)
+            )
+            if target_kind is None:
+                raise BibleFormatError(f"구조화 참조 대상이 없습니다: {owner}: {parsed.value}")
+            if expected is not None and target_kind not in expected:
+                raise BibleFormatError(f"구조화 참조 타입이 잘못되었습니다: {owner}: {target_kind}")
+
         for node in nodes:
+            if node.visible_to and node.kind != "Fact":
+                raise BibleFormatError(f"visible_to는 Fact에만 지정할 수 있습니다: {node.id}")
+            viewers = [item.viewer for item in node.visible_to]
+            if len(viewers) != len(set(viewers)):
+                raise BibleFormatError(f"visible_to viewer가 중복되었습니다: {node.id}")
+            for viewer in viewers:
+                if viewer == "reader":
+                    continue
+                parsed = parse_address(viewer, self.ontology)
+                viewer_id = parsed.value
+                viewer_kind = (
+                    by_id[viewer_id].kind if viewer_id in by_id else existing.get(viewer_id)
+                )
+                if viewer_kind != "Character":
+                    raise BibleFormatError(
+                        f"visible_to viewer는 존재하는 Character여야 합니다: {node.id}: {viewer}"
+                    )
+            if node.kind == "Fact":
+                require_reference(node.props.get("subject"), owner=f"{node.id}.props.subject")
+            if node.kind == "Promise":
+                for field, expected in {
+                    "F": {"Fact", "Scene"},
+                    "T": {"Scene"},
+                    "P": {"Scene"},
+                }.items():
+                    if node.props.get(field) is not None:
+                        require_reference(
+                            node.props[field],
+                            owner=f"{node.id}.props.{field}",
+                            expected=expected,
+                        )
+            if node.kind in {"Scene", "Rule"}:
+                for phase in ("pre", "post", "forbid"):
+                    for index, condition in enumerate(node.props.get(phase, [])):
+                        require_reference(
+                            condition["subject"],
+                            owner=f"{node.id}.props.{phase}[{index}].subject",
+                        )
+            if node.kind == "Scene":
+                for index, claim in enumerate(node.props.get("claims", [])):
+                    require_reference(
+                        claim["speaker"],
+                        owner=f"{node.id}.props.claims[{index}].speaker",
+                        expected={"Character"},
+                    )
+                    require_reference(
+                        claim["fact"],
+                        owner=f"{node.id}.props.claims[{index}].fact",
+                        expected={"Fact"},
+                    )
+                for index, mention in enumerate(node.props.get("mentions", [])):
+                    require_reference(
+                        mention["entity"],
+                        owner=f"{node.id}.props.mentions[{index}].entity",
+                    )
             for edge in node.edges:
                 target = self._edge_target(edge.to)
                 target_kind = by_id[target].kind if target in by_id else existing.get(target)
@@ -283,6 +380,14 @@ class BibleLoader:
         changed_ids: set[str] = set()
         with connect_bootstrap(self.db_path) as connection:
             ensure_graph_state(connection)
+            applier = OperationApplier(self.ontology)
+            for node in nodes:
+                applier.validate_initial_props(
+                    connection,
+                    node_id=node.id,
+                    kind=node.kind,
+                    props=node.props,
+                )
             for node in nodes:
                 current = connection.execute(
                     "SELECT cid, tx_to, rev FROM node WHERE id = ?", (node.id,)
@@ -324,6 +429,7 @@ class BibleLoader:
                     ),
                 )
                 self._replace_node_details(connection, node)
+                self._replace_visibility(connection, node)
                 connection.execute("DELETE FROM node_fts WHERE id = ?", (node.id,))
                 connection.execute(
                     "INSERT INTO node_fts(id, title, aliases, summary, body) "
@@ -360,6 +466,7 @@ class BibleLoader:
                         ),
                     )
                     edge_count += 1
+            validate_graph(connection, self.ontology)
             for node_id in sorted(changed_ids):
                 refresh_node_cid(connection, node_id)
                 record_revision(connection, node_id, proposal_id=None, replace=True)
@@ -388,6 +495,14 @@ class BibleLoader:
             VALUES (?, ?, ?, ?, ?)
             """,
             (node.id, node.relative_file, node.body_start, node.body_end, node.summary),
+        )
+
+    @staticmethod
+    def _replace_visibility(connection: Any, node: BibleNode) -> None:
+        connection.execute("DELETE FROM visibility WHERE fact = ?", (node.id,))
+        connection.executemany(
+            "INSERT INTO visibility(fact, viewer, learned_at, pathway) VALUES (?, ?, ?, ?)",
+            [(node.id, item.viewer, item.learned_at, item.pathway) for item in node.visible_to],
         )
 
     def _edge_target(self, value: str) -> str:

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from .database import connect_write
+from .diagnostics import DiagnosticEngine
 from .merkle import advance_graph_state, canonical_json, ensure_graph_state
 from .models import Operation, ProposalInput, ReadSetEntry
 from .ontology import Ontology
@@ -37,10 +38,12 @@ class WriteService:
         db_path: str | Path,
         ontology: Ontology,
         policy_path: str | Path,
+        rules_path: str | Path,
     ) -> None:
         self.db_path = Path(db_path).resolve()
         self.ontology = ontology
         self.policy = RiskPolicy(policy_path)
+        self.diagnostics = DiagnosticEngine(self.db_path, rules_path)
         self.applier = OperationApplier(ontology)
         self._lock = _database_lock(self.db_path)
         with self._lock, connect_write(self.db_path) as connection:
@@ -232,6 +235,8 @@ class WriteService:
                             now=now,
                         )
                     )
+                diagnostics = self.diagnostics.evaluate(connection)
+                self.diagnostics.synchronize(connection, diagnostics, now)
                 graph_revision, root_cid = advance_graph_state(connection, now)
                 result = {
                     "proposal_id": proposal_id,
@@ -240,7 +245,7 @@ class WriteService:
                     "rejected": [],
                     "graph_revision": graph_revision,
                     "root_cid": root_cid,
-                    "diagnostics": [],
+                    "diagnostics": diagnostics,
                 }
                 if mode == "dry_run":
                     connection.execute("ROLLBACK TO storyai_dry_run")
