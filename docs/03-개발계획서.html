@@ -1,0 +1,454 @@
+<title>개발계획서 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#666A7A; --muted-2:#8A8E9E;
+  --thread:#A9333F; --indigo:#365478; --moss:#42684A; --brass:#8C6B28;
+  --thread-bg:#F8EAEC; --indigo-bg:#E9EFF6; --moss-bg:#E9F1EA; --brass-bg:#F7F0DF;
+  --shadow:0 1px 2px rgba(23,26,36,.05), 0 10px 30px rgba(23,26,36,.06);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--thread);outline-offset:3px;border-radius:2px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1280px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:30px 20px 40px 24px;border-right:1px solid var(--line)}
+.doc{padding:32px 46px 110px;min-width:0}
+@media (max-width:960px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:20px 22px 16px}
+  .doc{padding:24px 20px 70px}
+}
+
+/* rail */
+.mk{display:flex;align-items:center;gap:9px;margin-bottom:6px;text-decoration:none;color:inherit}
+.mk b{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.rail .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin:0 0 18px 29px}
+.rail h4{margin:16px 0 6px;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.rail a.d{display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 11px;font-size:12.5px;
+  color:var(--muted);text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail a.d:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail a.d.cur{color:var(--ink);border-left-color:var(--thread);font-weight:600}
+.rail a.d .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);flex:none}
+.rail .toc{margin-top:18px}
+.rail .toc a{display:block;padding:2.5px 0 2.5px 11px;font-size:12px;color:var(--muted);
+  text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail .toc a:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail .toc a .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-right:5px}
+
+/* masthead */
+.mast{margin-bottom:42px}
+.mast .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--thread);font-weight:500;margin-bottom:12px}
+.mast h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.2vw,42px);line-height:1.2;
+  margin:0 0 12px;letter-spacing:-.025em;text-wrap:balance}
+.mast .dek{font-size:16px;color:var(--muted);max-width:62ch;margin:0 0 20px;line-height:1.66;font-weight:300}
+.mast .dek b{color:var(--ink);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-family:var(--mono);font-size:11px;
+  color:var(--muted-2);border-top:1px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+/* type */
+h2{font-family:var(--serif);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin:54px 0 4px;text-wrap:balance;scroll-margin-top:20px}
+h2 .num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--thread);
+  display:block;letter-spacing:.1em;margin-bottom:6px}
+h2+.lede{color:var(--muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;font-weight:300;line-height:1.62}
+h3{font-size:17px;font-weight:600;letter-spacing:-.012em;margin:34px 0 10px;scroll-margin-top:20px}
+h3 .num{font-family:var(--mono);font-size:12px;color:var(--muted-2);font-weight:500;margin-right:8px}
+h4{font-size:13.5px;font-weight:600;margin:22px 0 7px}
+p{margin:0 0 14px;max-width:74ch}
+strong,b{font-weight:600}
+a{color:var(--thread);text-underline-offset:2.5px;text-decoration-thickness:1px}
+ul,ol{margin:0 0 15px;padding-left:22px;max-width:74ch}
+li{margin-bottom:6px}
+li::marker{color:var(--muted-2)}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+blockquote{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;color:var(--muted);max-width:66ch;line-height:1.8}
+
+/* blocks */
+.key{border-left:3px solid var(--thread);background:var(--thread-bg);padding:14px 18px;margin:20px 0;
+  border-radius:0 8px 8px 0;max-width:76ch}
+.key .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:5px}
+.key p{max-width:none}.key p:last-child{margin-bottom:0}
+.note{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:14px 18px;
+  margin:20px 0;font-size:14px;max-width:76ch}
+.note .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:5px}
+.note p{max-width:none}.note p:last-child{margin-bottom:0}
+.note.warn{border-left:3px solid var(--brass);background:var(--brass-bg);border-color:transparent}
+.note.warn .lbl{color:var(--brass)}
+.note.ok{border-left:3px solid var(--moss);background:var(--moss-bg);border-color:transparent}
+.note.ok .lbl{color:var(--moss)}
+
+/* code */
+pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 17px;
+  overflow-x:auto;margin:18px 0;font-family:var(--mono);font-size:12.5px;line-height:1.68}
+pre code{background:none;border:none;padding:0;white-space:pre;font-size:inherit}
+pre .c{color:var(--muted-2)} pre .k{color:var(--indigo);font-weight:500}
+pre .s{color:var(--moss)} pre .t{color:var(--thread)}
+.codehead{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted-2);margin:20px 0 -10px;font-weight:600}
+
+/* tables */
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.55}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);font-weight:600;
+  background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap;font-size:11.5px}
+.nm{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.y{color:var(--moss);font-weight:500} td.n{color:var(--thread);font-weight:500}
+
+/* figures */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:20px 22px 16px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.6;max-width:74ch;
+  padding-top:12px;border-top:1px solid var(--line-soft)}
+figcaption b{color:var(--ink);font-weight:500}
+figure .fnum{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:10px}
+
+/* components */
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-family:var(--mono);
+  font-weight:500;vertical-align:middle}
+.pill.dev{background:var(--thread-bg);color:var(--thread)}
+.pill.evt{background:var(--indigo-bg);color:var(--indigo)}
+.pill.sub{background:var(--moss-bg);color:var(--moss)}
+.pill.w{background:var(--brass-bg);color:var(--brass)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin:20px 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
+.card h5{margin:0 0 6px;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.card p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.62;max-width:none}
+.card p+p{margin-top:8px}
+.card.acc{border-left:3px solid var(--thread)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:22px 0}
+.stat{background:var(--surface);padding:14px 16px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.stat .src{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+.tool{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin:12px 0;overflow:hidden}
+.tool>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);flex-wrap:wrap}
+.tool>header .tn{font-family:var(--mono);font-size:13px;font-weight:600}
+.tool>header .ro{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
+  background:var(--moss-bg);color:var(--moss);font-weight:500}
+.tool>header .rw{background:var(--brass-bg);color:var(--brass)}
+.tool>header .d{font-size:12.5px;color:var(--muted);margin-left:auto}
+.tool .body{padding:11px 14px}
+.tool pre{margin:0 0 9px;background:var(--paper);font-size:11.8px}
+.tool p{font-size:13px;color:var(--muted);margin:0;max-width:none;line-height:1.6}
+.rowlink{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;
+  text-decoration:none;color:var(--ink);margin:6px 8px 6px 0}
+.rowlink:hover{border-color:var(--thread)}
+.rowlink .a{color:var(--thread)}
+.refs{font-size:12.5px;line-height:1.7;column-count:2;column-gap:34px}
+@media (max-width:800px){.refs{column-count:1}}
+.refs div{break-inside:avoid;margin-bottom:7px;color:var(--muted)}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{border-bottom-color:var(--thread)}
+.refs .tag{font-family:var(--mono);font-size:10px;color:var(--thread);margin-right:5px}
+.trail{display:flex;gap:10px;flex-wrap:wrap;margin-top:60px;padding-top:22px;border-top:1px solid var(--line)}
+.trail a{flex:1;min-width:220px;text-decoration:none;color:inherit;border:1px solid var(--line);
+  border-radius:9px;padding:12px 15px;background:var(--surface)}
+.trail a:hover{border-color:var(--thread)}
+.trail .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.trail .t{font-size:14px;font-weight:600;margin-top:3px}
+</style>
+<div class="wrap">
+<nav class="rail">
+<a class="mk" href="index.html"><svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M3 2v20M17 2v20" stroke="currentColor" stroke-width="1.2" opacity=".3"/><path d="M3 7c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none"/><path d="M3 15c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none" opacity=".45"/></svg><b>storyai</b></a>
+<p class="sub">설계 문서 세트 v1</p>
+<h4>문서</h4>
+<a class="d" href="index.html"><span class="n">·</span><span>문서 허브</span></a>
+<a class="d" href="01-기획서.html"><span class="n">01</span><span>기획서</span></a>
+<a class="d" href="02-설계서.html"><span class="n">02</span><span>설계서</span></a>
+<a class="d cur" href="03-개발계획서.html"><span class="n">03</span><span>개발계획서</span></a>
+<a class="d" href="04-기술스택.html"><span class="n">04</span><span>기술 스택</span></a>
+<a class="d" href="05-구조도.html"><span class="n">05</span><span>구조도</span></a>
+<a class="d" href="06-UI설계.html"><span class="n">06</span><span>UI 설계</span></a>
+<a class="d" href="07-UI목업.html"><span class="n">07</span><span>UI 목업</span></a>
+<div class="toc"><h4>이 문서</h4><a href="#overview"><span class="n">1</span>전체 로드맵</a>
+<a href="#p0"><span class="n">2</span>P0 — 읽기 전용 인덱스</a>
+<a href="#p1"><span class="n">3</span>P1 — 쓰기 경로</a>
+<a href="#p2"><span class="n">4</span>P2 — 복선과 진단</a>
+<a href="#p3"><span class="n">5</span>P3 — 추출과 검색</a>
+<a href="#p4"><span class="n">6</span>P4 — UI</a>
+<a href="#p5"><span class="n">7</span>P5 — 도미노 v1</a>
+<a href="#test"><span class="n">8</span>테스트와 회귀 스위트</a>
+<a href="#risk"><span class="n">9</span>리스크 레지스터</a>
+<a href="#dont"><span class="n">10</span>하지 말아야 할 것</a></div>
+</nav>
+<main class="doc">
+<header class="mast">
+  <div class="eyebrow">storyai · 03 개발계획서 · 2026-08-24</div>
+  <h1>개발계획서</h1>
+<p class="dek">P0부터 P6까지, 각 단계의 <b>산출물·태스크·완료 기준</b>. 핵심 원칙은 하나 — <b>각 단계는 그 단계만으로 실제로 쓸 수 있어야</b> 합니다. P0만 끝나도 소설을 쓸 수 있습니다.</p>
+<div class="meta">
+  <span>대상 <b>개발자</b></span>
+  <span>선행 <b>02 설계서</b></span>
+  <span>총 <b>16~22주</b> (P6 제외)</span>
+</div>
+
+</header>
+
+
+<h2 id="overview"><span class="num">1</span>전체 로드맵</h2>
+
+<div class="tbl">
+<table>
+<thead><tr><th>단계</th><th>기간</th><th>산출</th><th>완료 기준 (하나만)</th></tr></thead>
+<tbody>
+<tr><td><b>P0</b><br>읽기 전용 인덱스</td><td class="nm">1–2주</td><td>파일 규약 · 스키마 · SQLite · 툴 5개</td><td>Claude Code에서 <b>“한도영이 나오는 씬 전부”</b>가 답해진다</td></tr>
+<tr><td><b>P1</b><br>쓰기 경로</td><td class="nm">2–3주</td><td><code>propose · commit</code> · op 로그 · 삼중 시간축 · 프로버넌스</td><td>에이전트 편집이 전부 제안으로 들어오고, 충돌이 <b>덮어쓰기 없이</b> 보류된다</td></tr>
+<tr><td><b>P2</b><br>복선 + 진단</td><td class="nm">2–3주</td><td>Promise F–T–P · 가시성 · Tier 1 규칙 12개 · <code>check · promises</code></td><td><b>미회수 복선이 SQL 한 줄로 나온다</b></td></tr>
+<tr><td><b>P3</b><br>추출 + 검색</td><td class="nm">3–4주</td><td><code>ingest</code> 증분 추출 · 임베딩 · <code>trace · neighborhood · impact · query</code></td><td>새 챕터를 커밋하면 <b>0.5초 내</b>에 그래프가 갱신되고 파생 간선이 무효화된다</td></tr>
+<tr><td><b>P4</b><br>UI</td><td class="nm">4–6주</td><td>React 캔버스 · 복선 보드 · 이중 시간축 · <b>diff 뷰</b> · 검수 큐</td><td>사람의 편집과 캐스케이드 파생 편집이 <b>시각적으로 구분된다</b></td></tr>
+<tr><td><b>P5</b><br>도미노 v1</td><td class="nm">2–3주</td><td>전이적 dirty 마킹 · 위상 정렬 · <b>early cutoff</b> · 예산 · 사이클 처리</td><td>결정론 규칙만으로 전파가 돌고 <b>반드시 멈춘다</b></td></tr>
+<tr><td><b>P6</b><br>도미노 v2 <span class="pill w">선택</span></td><td class="nm">4주+</td><td>LLM 재도출 · 에이전트 세션 브랜치</td><td>P5가 실제로 쓰이기 시작한 뒤에만 착수</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key">
+  <div class="lbl">P0을 작게 유지하세요</div>
+  <p>온톨로지를 완성한 뒤 시작하려 하면 못 시작합니다. <b>P0에서는 노드 타입 6개만</b> — Character, Location, Object, Scene, Rule, Promise. 나머지는 <code>props</code> JSON에 담으세요. 어떤 타입이 진짜 필요한지는 <b>실제로 한 권을 쓰면서</b> 알게 됩니다.</p>
+</div>
+
+<h2 id="p0"><span class="num">2</span>P0 — 읽기 전용 인덱스</h2>
+<p class="lede">1~2주. 이 단계가 끝나면 손으로 채운 설정집을 에이전트가 조회할 수 있습니다. 쓰기는 아직 없습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>산출</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">0.1</td><td>저장소 레이아웃 확정, <code>.mcp.json</code> 작성</td><td>디렉터리 트리</td><td class="nm">0.5일</td></tr>
+<tr><td class="nm">0.2</td><td><code>spec/schema.sql</code> 적용 — node · edge · tag · node_tag · feature · evidence · FTS5</td><td><code>store/story.db</code></td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.3</td><td><code>core/ontology.py</code> — <code>spec/ontology.json</code> 로더, 타입·간선 검증</td><td>모듈</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.4</td><td><code>core/address.py</code> — 주소 파서, 접미사 매칭, 별칭 해석</td><td>모듈 + 테스트</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.5</td><td><code>core/traverse.py</code> — 재귀 CTE 순회 (<b>인터페이스 뒤에 은닉</b>)</td><td>모듈</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">0.6</td><td><code>bible/</code> 마크다운 → 그래프 로더 (수동 설정집 부트스트랩)</td><td>스크립트</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.7</td><td>MCP 서버 뼈대 (FastMCP, stdio) + 툴 5개</td><td><code>server/</code></td><td class="nm">2일</td></tr>
+<tr><td class="nm">0.8</td><td>툴 설명 2KB 이하로 다듬기, <code>tools/list</code> 결정적 정렬</td><td>—</td><td class="nm">0.5일</td></tr>
+<tr><td class="nm">0.9</td><td>응답 강등 사다리 (<code>max_chars</code> → 개요 → 주소맵 → 개수+안내)</td><td><code>core/budget.py</code></td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.10</td><td>Claude Code · Codex 양쪽에서 연결 확인</td><td>—</td><td class="nm">0.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>P0 완료 판정 스크립트</h4>
+<pre><code><span class="c"># 이 다섯 질문이 답해지면 P0 완료</span>
+1. outline(scope="book")                       <span class="c"># 전체 구조가 보이는가</span>
+2. find("한도영")                               <span class="c"># 별칭으로도 찾아지는가</span>
+3. get("character/한도영", include="brief")     <span class="c"># 요약이 1줄로 오는가</span>
+4. refs("character/한도영", dir="in")           <span class="c"># 역방향이 나오는가 ★</span>
+5. graph_schema()                              <span class="c"># 타입 체계를 스스로 알 수 있는가</span>
+
+<span class="c"># 그리고 4번이 8,000 토큰 안에 들어오는가 — 이게 진짜 기준</span></code></pre>
+
+<div class="note warn">
+  <div class="lbl">P0에서 하지 말 것</div>
+  <p><b>자동 추출을 만들지 마세요.</b> 손으로 채운 설정집만으로 P0~P2는 완전히 유용하고, 추출 품질은 스키마가 확정된 뒤에야 튜닝할 수 있습니다. 순서를 뒤집으면 잘못된 스키마 위에 추출기를 튜닝하게 됩니다.</p>
+</div>
+
+<h2 id="p1"><span class="num">3</span>P1 — 쓰기 경로</h2>
+<p class="lede">2~3주. 삼중 시간축과 프로버넌스가 <b>여기서 들어가야</b> 합니다. 나중에 얹을 수 없습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">1.1</td><td>스키마에 삼중 시간축 컬럼 추가 — node·edge 양쪽</td><td><b>P1을 넘기면 마이그레이션 불가</b></td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.2</td><td><code>op</code> · <code>proposal</code> 테이블 + <code>read_set</code> JSON</td><td>—</td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.3</td><td><code>core/ops.py</code> — 5개 verb 적용기 (ADD/UPDATE/INVALIDATE/LINK/UNLINK)</td><td>INVALIDATE는 <code>tx_to</code>만 닫음</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.4</td><td>충돌 판정 — <code>read_set</code> 리비전 대조 → 필드 단위 검사</td><td>Dolt 셀 단위 규칙</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.5</td><td>위험 등급 정책 엔진 (자동 / 검수 / 항상)</td><td><code>spec/policy.json</code>로 분리</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.6</td><td>프로버넌스 — PROV-O 6술어를 관계형으로</td><td><b>필드 단위</b>로. 위키데이터 실수 회피</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.7</td><td>Merkle — 노드 정규 직렬화 → <code>cid</code>, 그래프 루트</td><td>diff를 O(변경분)으로</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.8</td><td><code>propose</code> · <code>commit</code> 툴 + <code>idem_key</code> 중복 방지</td><td>빈 <code>read_set</code> 거부</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.9</td><td>단일 커밋 레인 (SQLite WAL + 직렬화 큐)</td><td>—</td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.10</td><td><code>session/</code> 노드 규약 + AGENTS.md 인계 절</td><td>스위칭 전제</td><td class="nm">1일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p2"><span class="num">4</span>P2 — 복선과 진단</h2>
+<p class="lede">2~3주. <b>제품의 차별점이 여기서 나옵니다.</b></p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">2.1</td><td>Promise 노드 타입 + F–T–P 필드 + 상태 전이 검증</td><td>hypothetical → eligible → actualized</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">2.2</td><td><code>visibility</code> 테이블 + <code>reader</code> 원소 + 4개 술어</td><td>극적 아이러니 · 미스터리 · 반전 · 버그</td><td class="nm">2일</td></tr>
+<tr><td class="nm">2.3</td><td>씬 전이 계약 <code>{pre, post, forbid}</code> + <code>feasible()</code> 판정</td><td>ConWriter −82%의 근거</td><td class="nm">2일</td></tr>
+<tr><td class="nm">2.4</td><td>Tier 1 규칙 12개 구현 — <code>spec/rules.json</code> 기반, 전부 SQL</td><td>규칙 하나당 반나절</td><td class="nm">5일</td></tr>
+<tr><td class="nm">2.5</td><td>DAG 불변식 + 도달 가능성 검사 (매 쓰기마다)</td><td>PLOTTER의 두 불변식</td><td class="nm">1일</td></tr>
+<tr><td class="nm">2.6</td><td><code>check</code> · <code>promises</code> 툴</td><td>노드 단위·범위 단위 둘 다</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">2.7</td><td>S-Eff · Δ-Coh 계산 (초기엔 근사치로)</td><td>정밀화는 나중에</td><td class="nm">1.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note ok">
+  <div class="lbl">P2 완료 판정</div>
+  <p>일부러 심은 모순 다섯 개(왼손/오른손, 죽은 인물 재등장, 인물이 모르는 사실 발화, 회수 없는 복선, 트리거 없는 회수)를 <b>전부 <code>check</code>가 잡아내면</b> 완료입니다. LLM 호출 0회로.</p>
+</div>
+
+<h2 id="p3"><span class="num">5</span>P3 — 추출과 검색</h2>
+<p class="lede">3~4주. 비용은 검색이 아니라 <b>구축</b>에 있습니다 — 특성화 연구에서 디코드는 구축 토큰의 4.6%였습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">3.1</td><td>씬 경계 분할 — 시간·장소·인물 구성의 일관성 기준</td><td>Storyline Trees 정의</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.2</td><td>추출 프롬프트 v1 — 타입별 1패스, 근거 span 강제</td><td><code>prompts/v1/</code>, 덮어쓰기 금지</td><td class="nm">3일</td></tr>
+<tr><td class="nm">3.3</td><td><b>명시적 ID 바인딩</b> — 추출기가 언급을 ID에 묶게 강제</td><td>추론된 coref 신뢰 금지 (SOTA F1 36%)</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.4</td><td>증분 재인덱싱 + 하위 간선 무효화</td><td>NWM Publish 흐름</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.5</td><td>임베딩 파이프라인 + sqlite-vec 인덱스</td><td>로컬 모델</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.6</td><td>하이브리드 검색 — BM25 + dense + RRF 융합</td><td>BM25 반드시 병행</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.7</td><td><code>neighborhood</code> — 시드 랭킹 → 1-hop 확장 → 예산 절단</td><td><b>0.358 vs 0.898을 가른 부분</b></td><td class="nm">3일</td></tr>
+<tr><td class="nm">3.8</td><td><code>trace</code> · <code>impact</code> · <code>query</code> 툴</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.9</td><td>오프라인 통합 패스 (세션 사이 백그라운드)</td><td>LightMem sleep-time</td><td class="nm">2일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p4"><span class="num">6</span>P4 — UI</h2>
+<p class="lede">4~6주. 상세 화면 명세는 <a href="06-UI설계.html">06 UI 설계</a>에 있습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">4.1</td><td>FastAPI — <code>core/</code>를 감싸는 REST 계층</td><td>MCP와 같은 코어 재사용</td><td class="nm">3일</td></tr>
+<tr><td class="nm">4.2</td><td>React + Vite + TS 셸, 디자인 토큰 적용</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.3</td><td>React Flow 캔버스 + elkjs 레이아웃 + 타입 필터</td><td>한 화면 수백 노드 상한</td><td class="nm">5일</td></tr>
+<tr><td class="nm">4.4</td><td>인스펙터 — 필드·시간축·전이계약·근거·참조·이력</td><td>—</td><td class="nm">4일</td></tr>
+<tr><td class="nm">4.5</td><td>복선 보드 (F–T–P 칸반)</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.6</td><td>이중 시간축 뷰</td><td>회상 자동 검출 시각화</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.7</td><td><b>검수 큐 + diff 뷰</b></td><td>제품 기능으로 정식 편성. 공짜로 안 나옴</td><td class="nm">5일</td></tr>
+<tr><td class="nm">4.8</td><td>사람 편집 vs 캐스케이드 파생 편집 <b>시각 구분</b></td><td>Patchwork가 막힌 지점</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.9</td><td><code>.lsp.json</code> — 진단을 에디터로 (선택, CC 전용)</td><td>있으면 질적으로 다른 제품</td><td class="nm">4일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p5"><span class="num">7</span>P5 — 도미노 v1</h2>
+<p class="lede">2~3주. <b>LLM 없이</b> 만듭니다.</p>
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">5.1</td><td>역 <code>read_set</code> 인덱스 — 의존 그래프 구축</td><td>이미 P1에 데이터가 있음</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">5.2</td><td>전이적 dirty 마킹 + 위상 정렬</td><td>Excel 계산 체인 모델</td><td class="nm">2일</td></tr>
+<tr><td class="nm">5.3</td><td><b>early cutoff</b> — 정규화 구조 투영 비교</td><td><b>이게 없으면 안 멈춤</b></td><td class="nm">2일</td></tr>
+<tr><td class="nm">5.4</td><td>사이클 감지 + 기본 거부 + 옵트인 반복 제한</td><td>—</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">5.5</td><td>예산 — <code>max_depth</code> · <code>max_nodes</code> · 방문 집합</td><td>초과 시 fail-closed</td><td class="nm">1일</td></tr>
+<tr><td class="nm">5.6</td><td>캐스케이드 → 제안 발행 (자동 커밋 없음)</td><td>—</td><td class="nm">1.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="test"><span class="num">8</span>테스트와 회귀 스위트</h2>
+<p class="lede">P1부터 상시로 돌립니다. 전부 기존 연구의 방법을 그대로 씁니다.</p>
+
+<div class="grid3">
+  <div class="card"><div class="m">지표 1</div><h5>CED 회귀</h5>
+    <p>그래프를 켠 초고와 끈 초고를 같은 프롬프트로 뽑아 1만 단어당 오류를 비교. ConStory-Checker의 4단계 파이프라인(범주별 추출 → 쌍 비교 → 증거 체인 → 문자 오프셋 앵커 JSON)을 그대로 구현.</p></div>
+  <div class="card"><div class="m">지표 2</div><h5>통제 모순 주입</h5>
+    <p>FlawedFictionsMaker 방식 — 자기 소설에 <em>의도적으로</em> 모순을 심고 검출률 측정. <code>evals/injected/</code>에 케이스를 쌓습니다. 오염 없는 자체 회귀 스위트를 만드는 가장 싼 방법.</p></div>
+  <div class="card"><div class="m">지표 3</div><h5>토큰 예산</h5>
+    <p>챕터 한 편 집필 시 컨텍스트에 들어간 인덱스 토큰. <b>8,000 초과하면 실패</b>로 처리.</p></div>
+</div>
+
+<h4>단위 테스트에서 반드시 다룰 것</h4>
+<ul>
+  <li><b>시간 구간 경계</b> — <code>story_to</code>가 null인 경우, 구간이 정확히 맞닿는 경우, 역전된 경우</li>
+  <li><b>가시성 술어</b> — 네 가지 상태 각각의 최소 재현 케이스</li>
+  <li><b>복선 상태 전이</b> — 불법 전이(트리거 없이 actualized)가 거부되는가</li>
+  <li><b>충돌 판정</b> — 같은 필드/다른 필드, 리비전 일치/불일치 4조합</li>
+  <li><b>early cutoff</b> — 정규화 투영이 같으면 전파가 멈추는가 (문자열은 달라도)</li>
+  <li><b>순환</b> — <code>causes</code> 순환을 만드는 쓰기가 거부되는가</li>
+</ul>
+
+<div class="note warn">
+  <div class="lbl">단일 스칼라로 튜닝하지 마세요</div>
+  <p>WSE-bench는 일관성과 풍부함의 파레토 경계가 <b>non-concave</b>라서 <em>어떤 양의 선형 가중치로도</em> 여러 비지배 구성을 고를 수 없다고 보고했습니다. 그리고 StoryRMB는 기존 보상 모델 최고가 <b>66.3%</b>에 불과하다고 보고했습니다. <b>CED는 회귀 감시용이지 최적화 대상이 아닙니다.</b> 일관성 점수 하나를 목적함수로 삼으면 재미없는 소설로 수렴합니다.</p>
+</div>
+
+<h2 id="risk"><span class="num">9</span>리스크 레지스터</h2>
+<div class="tbl">
+<table>
+<thead><tr><th>리스크</th><th>근거</th><th>완화</th><th>단계</th></tr></thead>
+<tbody>
+<tr><td><b>온톨로지 과설계</b></td><td>Logseq가 유사 모델 프로덕션화에 3년, 여전히 데이터 손실 경고</td><td>P0은 타입 6개. 전체도 20개 상한. 표현력은 간선·태그에서</td><td class="nm">P0</td></tr>
+<tr><td><b>자동 추출 신뢰</b></td><td>BookCoref — 책 규모 상호참조 SOTA가 <b>CoNLL-F1 36%</b></td><td>추론된 coref 의존 금지. <b>명시적 ID 바인딩을 쓰기 경로에서 강제</b></td><td class="nm">P3</td></tr>
+<tr><td><b>관계 상태 적체</b></td><td>EvoSpark의 “social memory stacking”</td><td>관계 간선에 주기적 통합 경로 필수. append만으로는 안 됨</td><td class="nm">P3</td></tr>
+<tr><td><b>메모리가 오히려 해가 됨</b></td><td>DOME의 CED 1.033 &gt; 순수 GPT-5-R 0.113</td><td>Tier 1 결정론 규칙 먼저. 회귀 스위트로 상시 감시</td><td class="nm">P2</td></tr>
+<tr><td><b>에이전트가 툴을 안 씀</b></td><td>Mem2ActBench — 메모리를 능동적으로 파라미터에 반영 못 함</td><td>조회를 쓰기의 <em>전제조건</em>으로 강제. <code>propose</code>가 빈 <code>read_set</code> 거부</td><td class="nm">P1</td></tr>
+<tr><td><b>전파가 안 멈춤</b></td><td>LLM 비결정성 + RippleBench의 거리 무관 잔존 효과</td><td>early cutoff를 <b>P5 첫 태스크로</b>. 예산은 정책으로 하드컷</td><td class="nm">P5</td></tr>
+<tr><td>검수 피로</td><td>제안이 쌓이면 사람이 전부 무시</td><td>위험 등급 자동 승인 + 앰비언트 인라인 표시. 모달 금지</td><td class="nm">P4</td></tr>
+<tr><td>도메인 적합성</td><td>KG 보조는 <b>행위 중심 서사에만</b> 효과, 내면 서사엔 없음</td><td>제품 주장을 미스터리·스릴러로 한정</td><td class="nm">—</td></tr>
+<tr><td>단일 메인테이너 의존</td><td>Kuzu 아카이브 전례</td><td>0.x·단일 메인테이너 부품을 스택에 넣지 않음</td><td class="nm">P0</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="dont"><span class="num">10</span>하지 말아야 할 것</h2>
+<ul>
+  <li><b>파일 읽기를 감싼 얇은 MCP 툴을 만들지 마세요.</b> 에이전트는 이미 파일 툴을 갖고 있습니다. MCP에는 <em>에이전트가 스스로 못 하는 것</em>만 — 상태를 들고 있는 것, 계산이 필요한 것, 챕터를 가로지르는 검색.</li>
+  <li><b>노드 전문을 툴 결과로 반환하지 마세요.</b> 주소를 돌려주고 에이전트가 따로 요청하게 하세요.</li>
+  <li><b>MCP prompts를 진입점으로 쓰지 마세요.</b> Codex 클라이언트에 미구현입니다.</li>
+  <li><b>freshness 판단을 LLM에게 시키지 마세요.</b> 버전 번호가 <em>명시적으로 라벨링된</em> 과제에서조차 실패합니다 — 추출(LLM)과 선택(결정론)을 분리하면 54% → 82%.</li>
+  <li><b>믿음·상태를 in-place로 덮어쓰지 마세요.</b> “그때 그녀는 아직 몰랐다”를 구조적으로 못 쓰게 됩니다.</li>
+  <li><b>산문 속 언급을 자동으로 고치지 마세요.</b> soft 간선은 보고만 합니다.</li>
+  <li><b>캐스케이드가 canon을 자동 커밋하게 두지 마세요.</b> 항상 제안으로.</li>
+  <li><b>SKILL.md에 호스트 전용 frontmatter를 넣지 마세요.</b> 엄격 검증기에서 하드 에러입니다.</li>
+  <li><b>Codex CLI를 포크하지 마세요.</b> 월 900커밋, 안정적 out-of-tree API 없음, 유지되는 포크 사실상 0.</li>
+  <li><b>Roots · Sampling · Logging 위에 짓지 마세요.</b> 셋 다 deprecated입니다.</li>
+</ul>
+
+<div class="trail"><a href="02-설계서.html"><div class="k">← 이전</div><div class="t">설계서</div></a><a href="04-기술스택.html"><div class="k">다음 →</div><div class="t">기술 스택</div></a></div>
+</main>
+</div>

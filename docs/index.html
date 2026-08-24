@@ -1,0 +1,345 @@
+<title>문서 허브 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#666A7A; --muted-2:#8A8E9E;
+  --thread:#A9333F; --indigo:#365478; --moss:#42684A; --brass:#8C6B28;
+  --thread-bg:#F8EAEC; --indigo-bg:#E9EFF6; --moss-bg:#E9F1EA; --brass-bg:#F7F0DF;
+  --shadow:0 1px 2px rgba(23,26,36,.05), 0 10px 30px rgba(23,26,36,.06);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--thread);outline-offset:3px;border-radius:2px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1280px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:30px 20px 40px 24px;border-right:1px solid var(--line)}
+.doc{padding:32px 46px 110px;min-width:0}
+@media (max-width:960px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:20px 22px 16px}
+  .doc{padding:24px 20px 70px}
+}
+
+/* rail */
+.mk{display:flex;align-items:center;gap:9px;margin-bottom:6px;text-decoration:none;color:inherit}
+.mk b{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.rail .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin:0 0 18px 29px}
+.rail h4{margin:16px 0 6px;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.rail a.d{display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 11px;font-size:12.5px;
+  color:var(--muted);text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail a.d:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail a.d.cur{color:var(--ink);border-left-color:var(--thread);font-weight:600}
+.rail a.d .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);flex:none}
+.rail .toc{margin-top:18px}
+.rail .toc a{display:block;padding:2.5px 0 2.5px 11px;font-size:12px;color:var(--muted);
+  text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail .toc a:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail .toc a .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-right:5px}
+
+/* masthead */
+.mast{margin-bottom:42px}
+.mast .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--thread);font-weight:500;margin-bottom:12px}
+.mast h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.2vw,42px);line-height:1.2;
+  margin:0 0 12px;letter-spacing:-.025em;text-wrap:balance}
+.mast .dek{font-size:16px;color:var(--muted);max-width:62ch;margin:0 0 20px;line-height:1.66;font-weight:300}
+.mast .dek b{color:var(--ink);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-family:var(--mono);font-size:11px;
+  color:var(--muted-2);border-top:1px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+/* type */
+h2{font-family:var(--serif);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin:54px 0 4px;text-wrap:balance;scroll-margin-top:20px}
+h2 .num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--thread);
+  display:block;letter-spacing:.1em;margin-bottom:6px}
+h2+.lede{color:var(--muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;font-weight:300;line-height:1.62}
+h3{font-size:17px;font-weight:600;letter-spacing:-.012em;margin:34px 0 10px;scroll-margin-top:20px}
+h3 .num{font-family:var(--mono);font-size:12px;color:var(--muted-2);font-weight:500;margin-right:8px}
+h4{font-size:13.5px;font-weight:600;margin:22px 0 7px}
+p{margin:0 0 14px;max-width:74ch}
+strong,b{font-weight:600}
+a{color:var(--thread);text-underline-offset:2.5px;text-decoration-thickness:1px}
+ul,ol{margin:0 0 15px;padding-left:22px;max-width:74ch}
+li{margin-bottom:6px}
+li::marker{color:var(--muted-2)}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+blockquote{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;color:var(--muted);max-width:66ch;line-height:1.8}
+
+/* blocks */
+.key{border-left:3px solid var(--thread);background:var(--thread-bg);padding:14px 18px;margin:20px 0;
+  border-radius:0 8px 8px 0;max-width:76ch}
+.key .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:5px}
+.key p{max-width:none}.key p:last-child{margin-bottom:0}
+.note{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:14px 18px;
+  margin:20px 0;font-size:14px;max-width:76ch}
+.note .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:5px}
+.note p{max-width:none}.note p:last-child{margin-bottom:0}
+.note.warn{border-left:3px solid var(--brass);background:var(--brass-bg);border-color:transparent}
+.note.warn .lbl{color:var(--brass)}
+.note.ok{border-left:3px solid var(--moss);background:var(--moss-bg);border-color:transparent}
+.note.ok .lbl{color:var(--moss)}
+
+/* code */
+pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 17px;
+  overflow-x:auto;margin:18px 0;font-family:var(--mono);font-size:12.5px;line-height:1.68}
+pre code{background:none;border:none;padding:0;white-space:pre;font-size:inherit}
+pre .c{color:var(--muted-2)} pre .k{color:var(--indigo);font-weight:500}
+pre .s{color:var(--moss)} pre .t{color:var(--thread)}
+.codehead{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted-2);margin:20px 0 -10px;font-weight:600}
+
+/* tables */
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.55}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);font-weight:600;
+  background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap;font-size:11.5px}
+.nm{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.y{color:var(--moss);font-weight:500} td.n{color:var(--thread);font-weight:500}
+
+/* figures */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:20px 22px 16px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.6;max-width:74ch;
+  padding-top:12px;border-top:1px solid var(--line-soft)}
+figcaption b{color:var(--ink);font-weight:500}
+figure .fnum{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:10px}
+
+/* components */
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-family:var(--mono);
+  font-weight:500;vertical-align:middle}
+.pill.dev{background:var(--thread-bg);color:var(--thread)}
+.pill.evt{background:var(--indigo-bg);color:var(--indigo)}
+.pill.sub{background:var(--moss-bg);color:var(--moss)}
+.pill.w{background:var(--brass-bg);color:var(--brass)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin:20px 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
+.card h5{margin:0 0 6px;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.card p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.62;max-width:none}
+.card p+p{margin-top:8px}
+.card.acc{border-left:3px solid var(--thread)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:22px 0}
+.stat{background:var(--surface);padding:14px 16px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.stat .src{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+.tool{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin:12px 0;overflow:hidden}
+.tool>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);flex-wrap:wrap}
+.tool>header .tn{font-family:var(--mono);font-size:13px;font-weight:600}
+.tool>header .ro{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
+  background:var(--moss-bg);color:var(--moss);font-weight:500}
+.tool>header .rw{background:var(--brass-bg);color:var(--brass)}
+.tool>header .d{font-size:12.5px;color:var(--muted);margin-left:auto}
+.tool .body{padding:11px 14px}
+.tool pre{margin:0 0 9px;background:var(--paper);font-size:11.8px}
+.tool p{font-size:13px;color:var(--muted);margin:0;max-width:none;line-height:1.6}
+.rowlink{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;
+  text-decoration:none;color:var(--ink);margin:6px 8px 6px 0}
+.rowlink:hover{border-color:var(--thread)}
+.rowlink .a{color:var(--thread)}
+.refs{font-size:12.5px;line-height:1.7;column-count:2;column-gap:34px}
+@media (max-width:800px){.refs{column-count:1}}
+.refs div{break-inside:avoid;margin-bottom:7px;color:var(--muted)}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{border-bottom-color:var(--thread)}
+.refs .tag{font-family:var(--mono);font-size:10px;color:var(--thread);margin-right:5px}
+.trail{display:flex;gap:10px;flex-wrap:wrap;margin-top:60px;padding-top:22px;border-top:1px solid var(--line)}
+.trail a{flex:1;min-width:220px;text-decoration:none;color:inherit;border:1px solid var(--line);
+  border-radius:9px;padding:12px 15px;background:var(--surface)}
+.trail a:hover{border-color:var(--thread)}
+.trail .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.trail .t{font-size:14px;font-weight:600;margin-top:3px}
+</style>
+<div class="wrap">
+<nav class="rail">
+<a class="mk" href="index.html"><svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M3 2v20M17 2v20" stroke="currentColor" stroke-width="1.2" opacity=".3"/><path d="M3 7c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none"/><path d="M3 15c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none" opacity=".45"/></svg><b>storyai</b></a>
+<p class="sub">설계 문서 세트 v1</p>
+<h4>문서</h4>
+<a class="d cur" href="index.html"><span class="n">·</span><span>문서 허브</span></a>
+<a class="d" href="01-기획서.html"><span class="n">01</span><span>기획서</span></a>
+<a class="d" href="02-설계서.html"><span class="n">02</span><span>설계서</span></a>
+<a class="d" href="03-개발계획서.html"><span class="n">03</span><span>개발계획서</span></a>
+<a class="d" href="04-기술스택.html"><span class="n">04</span><span>기술 스택</span></a>
+<a class="d" href="05-구조도.html"><span class="n">05</span><span>구조도</span></a>
+<a class="d" href="06-UI설계.html"><span class="n">06</span><span>UI 설계</span></a>
+<a class="d" href="07-UI목업.html"><span class="n">07</span><span>UI 목업</span></a>
+<div class="toc"><h4>이 문서</h4><a href="#map"><span class="n">지도</span>무엇을 어디서 읽나</a>
+<a href="#what"><span class="n">한 문단</span>무엇을 만드는가</a>
+<a href="#why"><span class="n">근거</span>왜 지금 성립하는가</a>
+<a href="#decisions"><span class="n">결정</span>여덟 개의 확정 사항</a>
+<a href="#status"><span class="n">현황</span>지금 어디까지 있나</a>
+<a href="#tree"><span class="n">부록</span>저장소 구조</a></div>
+</nav>
+<main class="doc">
+<header class="mast">
+  <div class="eyebrow">storyai · 문서 허브 · 2026-08-24</div>
+  <h1>소설을 자료구조로 다루는<br>집필 시스템</h1>
+<p class="dek">소설의 요소 — 인물·장소·소품·세계관 규칙·씬, 그리고 <b>복선·반전·회상 같은 서사 장치</b> — 를 타입 있는 노드 그래프로 분해해 저장하고, 그것을 <b>MCP로 코딩 에이전트에게</b> 열어주는 개인용 집필 도구. 이 문서 세트가 그 전체 설계입니다.</p>
+<div class="meta">
+  <span>버전 <b>v1</b></span>
+  <span>작성 <b>2026-08-24</b></span>
+  <span>범위 <b>개인 도구 → 서비스화 경로</b></span>
+  <span>근거 <b>2026년 논문 32편 · 저장소 40여 개</b></span>
+</div>
+
+</header>
+
+
+<h2 id="map"><span class="num">지도</span>무엇을 어디서 읽나</h2>
+<p class="lede">일곱 개 문서가 서로를 참조합니다. 처음이라면 <b>기획서 → 설계서 → 개발계획서</b> 순서로 읽으세요.</p>
+
+<div class="grid2">
+  <a class="card acc" href="01-기획서.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">01 · 기획자</div><h5>기획서</h5>
+    <p>왜 장편이 무너지는지, 컨텍스트를 키워도 왜 안 되는지, 시장에 어떤 빈틈이 있는지. 측정된 숫자와 사용 시나리오.</p></a>
+  <a class="card acc" href="02-설계서.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">02 · 개발자 · 핵심</div><h5>설계서</h5>
+    <p>3층 온톨로지, 삼중 시간축, 가시성 모델, 복선 F–T–P 상태기계, MCP 툴 15개 전체 시그니처, op 로그와 충돌 판정, 도미노 전파.</p></a>
+  <a class="card" href="03-개발계획서.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">03 · 개발자</div><h5>개발계획서</h5>
+    <p>P0~P6 로드맵, 단계별 태스크 분해, 완료 기준, 테스트 전략, 리스크 레지스터.</p></a>
+  <a class="card" href="04-기술스택.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">04 · 개발자</div><h5>기술 스택</h5>
+    <p>무엇을 쓰고 무엇을 거부했는지, 그리고 왜. 2026-08 기준 라이선스·생존 여부 확인 결과.</p></a>
+  <a class="card" href="05-구조도.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">05 · 모두</div><h5>구조도</h5>
+    <p>다이어그램 11장을 크게 모아둔 문서. 설명 없이 그림만 훑고 싶을 때.</p></a>
+  <a class="card" href="06-UI설계.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">06 · 디자이너·개발자</div><h5>UI 설계</h5>
+    <p>화면 네 개의 정보구조와 상태, 컴포넌트 인벤토리, 디자인 토큰, 렌더러 선택 근거.</p></a>
+  <a class="card" href="07-UI목업.html" style="text-decoration:none;color:inherit;display:block">
+    <div class="m">07 · 모두</div><h5>UI 목업</h5>
+    <p>실제로 동작하는 화면. 캔버스를 끌어보고 노드를 눌러보세요.</p></a>
+  <div class="card">
+    <div class="m">부속 · 기계 판독</div><h5>spec/</h5>
+    <p><code>ontology.json</code> · <code>tools.json</code> · <code>rules.json</code> · <code>schema.sql</code>. 구현이 직접 읽는 파일이고, 이 문서들이 설명하는 대상입니다.</p></div>
+</div>
+
+<h2 id="what"><span class="num">한 문단</span>무엇을 만드는가</h2>
+<div class="key">
+  <div class="lbl">한 문장</div>
+  <p>코딩 에이전트가 코드베이스를 다루듯 소설을 다루게 만드는 것 — <b>정의로 가기, 참조 찾기, 영향 분석, 진단</b>을 서사 요소 위에서 할 수 있게 하는 인덱스와 그 인덱스의 툴 표면.</p>
+</div>
+
+<p>에이전트 루프는 만들지 않습니다. Claude Code와 Codex가 이미 갖고 있고, 그걸 다시 만들면 몇 달이 갑니다. 대신 <b>도메인 로직 — 온톨로지, 인덱스, 복선 상태기계, 연속성 진단 — 을 MCP 서버로 소유</b>합니다. 그게 나중에 어디로 가든 살아남는 유일한 자산입니다.</p>
+
+<h2 id="why"><span class="num">근거</span>왜 지금 성립하는가</h2>
+<div class="stats">
+  <div class="stat"><div class="v">37.1→7.4</div><div class="l">증거 거리가 멀어질 때 임베딩 RAG의 Answer F1 붕괴. 그래프 방식은 유지됨</div><div class="src">arXiv:2606.24775</div></div>
+  <div class="stat"><div class="v">0.574→0.898</div><div class="l">범용 그래프 메모리 대비 서사 전용 스키마의 multi-hop 정확도</div><div class="src">arXiv:2607.05577</div></div>
+  <div class="stat"><div class="v">−82%</div><div class="l">씬에 STRIPS식 전이 계약을 붙였을 때 일관성 오류 밀도 감소</div><div class="src">arXiv:2608.05169</div></div>
+  <div class="stat"><div class="v">+34.6</div><div class="l">가시성 태그를 붙였을 때 지식 경계 충실도 향상 (포인트)</div><div class="src">arXiv:2606.25632</div></div>
+  <div class="stat"><div class="v">40–60%</div><div class="l">장편 일관성 오류가 집중되는 서사 위치 구간</div><div class="src">arXiv:2603.05890</div></div>
+</div>
+<p>자세한 해설은 <a href="01-기획서.html#problem">기획서 §1</a>에 있습니다.</p>
+
+<h2 id="decisions"><span class="num">결정</span>여덟 개의 확정 사항</h2>
+<p class="lede">각 결정의 근거는 해당 문서에 있습니다. 여기서는 무엇을 정했는지만 봅니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>결정</th><th>내용</th><th>상세</th></tr></thead>
+<tbody>
+<tr><td class="nm">1</td><td><b>MCP 우선</b></td><td>에이전트 루프를 만들지 않는다. 코어 하나에 진입점 둘(MCP + REST)</td><td><a href="01-기획서.html#mcp">기획 §3</a></td></tr>
+<tr><td class="nm">2</td><td><b>3층 온톨로지</b></td><td>원소 / 사건 / <b>서사 장치</b>. 다중 상속은 태그(의미) + 피처(데이터)</td><td><a href="02-설계서.html#ontology">설계 §1</a></td></tr>
+<tr><td class="nm">3</td><td><b>삼중 시간축</b></td><td>작중 / 독자 인지 / 편집. 표준 bitemporal은 2축이지만 소설은 3축</td><td><a href="02-설계서.html#time">설계 §4</a></td></tr>
+<tr><td class="nm">4</td><td><b>가시성 집합</b></td><td>모든 사실에 <code>visible_to</code>. 독자를 원소로 포함시켜 극적 아이러니를 술어로 환원</td><td><a href="02-설계서.html#visibility">설계 §5</a></td></tr>
+<tr><td class="nm">5</td><td><b>복선 F–T–P</b></td><td>설정–회수 2항이 아니라 트리거를 낀 3항 상태기계</td><td><a href="02-설계서.html#promise">설계 §6</a></td></tr>
+<tr><td class="nm">6</td><td><b>제안 기반 쓰기</b></td><td>모든 쓰기는 제안. <code>read_set</code>이 충돌·프로버넌스·전파를 동시에 해결</td><td><a href="02-설계서.html#ops">설계 §10</a></td></tr>
+<tr><td class="nm">7</td><td><b>도미노는 결정론 먼저</b></td><td>v1은 LLM 없이. <b>early cutoff</b> 없으면 전파가 원리적으로 안 멈춤</td><td><a href="02-설계서.html#cascade">설계 §12</a></td></tr>
+<tr><td class="nm">8</td><td><b>호스트 중립 5계층</b></td><td>MCP + SKILL.md + AGENTS.md + 훅 + 듀얼 매니페스트. 포크는 하지 않음</td><td><a href="02-설계서.html#hosts">설계 §13</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="status"><span class="num">현황</span>지금 어디까지 있나</h2>
+<div class="tbl">
+<table>
+<thead><tr><th>산출물</th><th>위치</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>문서 세트 7종</td><td><code>docs/</code></td><td class="y">완료</td></tr>
+<tr><td>기계 판독 스펙</td><td><code>spec/ontology.json · tools.json · rules.json · schema.sql</code></td><td class="y">완료</td></tr>
+<tr><td>패키지 스캐폴드</td><td><code>plugin.json · .claude-plugin/ · AGENTS.md · skills/ · hooks/</code></td><td class="y">완료</td></tr>
+<tr><td>MCP 서버 구현</td><td><code>server/</code></td><td class="n">미착수 — P0</td></tr>
+<tr><td>UI 구현</td><td><code>web/</code></td><td class="n">미착수 — P4</td></tr>
+<tr><td><code>.mcp.json</code></td><td>루트</td><td class="n">직접 생성 필요 (원격 도구로 쓸 수 없음)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note ok">
+  <div class="lbl">다음 액션</div>
+  <p><b>P0 — 읽기 전용 인덱스, 1~2주.</b> 스키마를 SQLite에 올리고 툴 다섯 개(<code>graph_schema · outline · find · get · refs</code>)만 만듭니다. 완료 기준은 하나 — 기존 원고를 넣고 Claude Code에서 <b>“한도영이 나오는 씬 전부”</b>가 답해지는 것. 자세한 분해는 <a href="03-개발계획서.html#p0">개발계획서 §P0</a>.</p>
+</div>
+
+<h2 id="tree"><span class="num">부록</span>저장소 구조</h2>
+<pre><code>storyai/
+├── docs/                       <span class="c"># 이 문서 세트</span>
+│   ├── index.html  01-기획서.html  02-설계서.html  03-개발계획서.html
+│   └── 04-기술스택.html  05-구조도.html  06-UI설계.html  07-UI목업.html
+├── spec/                       <span class="c"># 기계가 읽는 정의 — 문서와 구현의 접점</span>
+│   ├── ontology.json           <span class="c">#   노드·간선·태그 타입</span>
+│   ├── tools.json              <span class="c">#   MCP 툴 15개 시그니처</span>
+│   ├── rules.json              <span class="c">#   진단 규칙 카탈로그</span>
+│   └── schema.sql              <span class="c">#   DDL</span>
+├── build/                      <span class="c"># 문서 빌더 — 수정 후 python3 build/build.py</span>
+│   ├── build.py  style.css  parts/*.part.html
+├── manuscript/                 <span class="c"># 원고 원문 · git · 진실의 원천</span>
+├── bible/                      <span class="c"># 사람이 직접 쓰는 정본</span>
+├── store/story.db              <span class="c"># SQLite — 그래프 + op 로그 + 인덱스</span>
+├── server/                     <span class="c"># MCP 서버 (Python) ★ 자산</span>
+│   ├── core/                   <span class="c">#   온톨로지·순회·진단·전파 — UI와 공유</span>
+│   ├── tools/  extract/
+├── api/  web/                  <span class="c"># FastAPI + React 캔버스</span>
+├── skills/  hooks/             <span class="c"># 호스트 패키지</span>
+├── plugin.json  .claude-plugin/plugin.json  .mcp.json
+├── AGENTS.md                   <span class="c"># ★ 에이전트 지침 단일 소스</span>
+└── CLAUDE.md                   <span class="c"># AGENTS.md를 가리키는 한 줄</span></code></pre>
+
+<div class="trail"><a href="01-기획서.html"><div class="k">다음 →</div><div class="t">기획서</div></a></div>
+</main>
+</div>

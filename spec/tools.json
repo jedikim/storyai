@@ -1,0 +1,116 @@
+{
+  "$comment": "storyai MCP 툴 15개. 문서: docs/02-설계서.html#tools",
+  "version": "1.0.0",
+  "transport": "stdio",
+  "budget": {
+    "target_tokens": 8000,
+    "warn_tokens": 10000,
+    "hard_cap_tokens": 25000,
+    "tool_description_bytes": 2048,
+    "server_instructions_bytes": 2048,
+    "degradation_ladder": ["full", "outline", "address_map", "counts_with_guidance"]
+  },
+  "conventions": {
+    "response_format": ["concise", "detailed"],
+    "as_of": "챕터 컷오프. 이 시점 이후에 밝혀진 정보는 반환하지 않음",
+    "never_use": ["prompts/list", "prompts/get", "sampling", "roots", "logging"],
+    "$comment": "Codex MCP 클라이언트에 prompts 미구현. 나머지 셋은 2026-07-28에 deprecated"
+  },
+  "tools": [
+    { "name": "graph_schema", "group": "navigate", "readOnly": true,
+      "summary": "온톨로지를 런타임에 introspect",
+      "params": { "section": { "enum": ["kinds","edges","tags","rules"], "optional": true } },
+      "returns": "{ kinds[], edges[], tags[], rules[] }",
+      "cache_ttl_ms": 3600000 },
+
+    { "name": "outline", "group": "navigate", "readOnly": true,
+      "summary": "개요만 — 본문 없음",
+      "params": { "scope": "ref|'book'", "depth": "int=1", "kind": "string[]?" },
+      "returns": "[{ id, kind, title, summary }]",
+      "never": "본문 포함 금지" },
+
+    { "name": "find", "group": "navigate", "readOnly": true,
+      "summary": "하이브리드 검색 — BM25 + 벡터 + RRF",
+      "params": { "q": "string", "kind": "string[]?", "tag": "string[]?",
+                  "as_of": "int?", "mode": "lexical|semantic|hybrid=hybrid", "limit": "int=20" },
+      "returns": "[{ id, kind, title, summary, score }]" },
+
+    { "name": "get", "group": "read", "readOnly": true,
+      "summary": "노드 상세",
+      "params": { "ref": "string|string[]", "include": "brief|full|body=brief", "as_of": "int?" },
+      "returns": "Node[]",
+      "rule": "include=body 이면 depth를 0으로 강제" },
+
+    { "name": "refs", "group": "read", "readOnly": true,
+      "summary": "역방향 간선 — 가장 많이 쓰이는 툴",
+      "params": { "ref": "string", "dir": "in|out|both=in", "rel": "string[]?",
+                  "include_soft": "bool=false", "as_of": "int?" },
+      "returns": "[{ rel, id, title, hard, story_range }]" },
+
+    { "name": "trace", "group": "read", "readOnly": true,
+      "summary": "두 노드 사이 경로",
+      "params": { "from": "string", "to": "string?", "via": "string[]?",
+                  "max_depth": "int=5", "k": "int=5" },
+      "returns": "[{ path[], rels[], depth }]" },
+
+    { "name": "neighborhood", "group": "read", "readOnly": true,
+      "summary": "질의 조건부 이웃 확장 — 0.358 vs 0.898을 가른 메커니즘",
+      "params": { "intent": "string", "anchors": "string[]?", "as_of": "int?",
+                  "budget_tokens": "int=4000" },
+      "returns": "{ packet[], used_tokens, dropped }",
+      "pipeline": ["chapter_cutoff", "bm25+dense→RRF seed rank", "1-hop typed expand", "budget truncate"] },
+
+    { "name": "check", "group": "diagnose", "readOnly": true,
+      "summary": "연속성 진단",
+      "params": { "scope": "ref|'book'", "rules": "string[]?", "severity": "error|warn|info?" },
+      "returns": "[{ rule, severity, nodes[], evidence[], message }]",
+      "rules_source": "spec/rules.json" },
+
+    { "name": "promises", "group": "diagnose", "readOnly": true,
+      "summary": "복선 부채 조회",
+      "params": { "status": "string[]?", "as_of": "int?", "sort": "debt|age|s_eff=debt" },
+      "returns": "[{ id, F, T, P, status, debt, s_eff, delta_coh }]" },
+
+    { "name": "impact", "group": "diagnose", "readOnly": true,
+      "summary": "읽기 전용 캐스케이드 프리뷰",
+      "params": { "ref": "string", "change": "{ field, to }", "max_depth": "int=3" },
+      "returns": "{ affected[], broken_rules[], est_cost_tokens, cycle_detected }" },
+
+    { "name": "propose", "group": "mutate", "readOnly": false, "destructive": false,
+      "summary": "변경 제안 — 원자적",
+      "params": { "ops": "Op[]", "read_set": "[{ node, rev }]",
+                  "rationale": "string", "session_id": "string" },
+      "returns": "{ proposal_id, status, conflicts?[], pending_overlap?[] }",
+      "op_verbs": ["ADD", "UPDATE", "INVALIDATE", "LINK", "UNLINK"],
+      "rule": "빈 read_set은 거부" },
+
+    { "name": "commit", "group": "mutate", "readOnly": false, "destructive": true,
+      "summary": "제안 확정",
+      "params": { "proposal_id": "string", "mode": "apply|dry_run=apply" },
+      "returns": "{ applied[], rejected[], cascade_id?, diagnostics[] }" },
+
+    { "name": "ingest", "group": "mutate", "readOnly": false, "destructive": false,
+      "summary": "원고 → 그래프 증분 추출",
+      "params": { "chapter": "string", "mode": "extract|reindex=extract" },
+      "returns": "{ proposal_id, extracted: { nodes, edges, facts }, invalidated[] }",
+      "rule": "자동 커밋 금지" },
+
+    { "name": "lease", "group": "mutate", "readOnly": false, "destructive": false,
+      "summary": "작업 구역 선점 — 동시 다중 에이전트에서만 필요",
+      "params": { "mode": "acquire|release|list", "scope": "string?",
+                  "ttl_sec": "int=900", "session_id": "string", "note": "string?" },
+      "returns": "{ lease_id, scope, holder, expires_at, conflicts?[] }",
+      "note": "스위칭(번갈아 사용) 운용에서는 불필요. 권고이지 잠금이 아님" },
+
+    { "name": "query", "group": "escape", "readOnly": true,
+      "summary": "탈출 해치 — 읽기 전용 SQL",
+      "params": { "sql": "string", "params": "object?", "limit": "int=200" },
+      "returns": "{ columns[], rows[][], truncated }",
+      "connection": "read-only" }
+  ],
+  "risk_policy": {
+    "auto":   ["참조 없는 신규 노드 추가", "null 필드 채우기", "soft 간선 추가"],
+    "review": ["기존 필드 값 변경", "hard 간선 삭제", "Promise 상태 전이", "3~40 노드 연쇄"],
+    "always": ["locked 노드 수정", "Rule(canon) 수정", "40+ 연쇄", "contradicts 간선 생성"]
+  }
+}

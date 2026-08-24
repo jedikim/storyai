@@ -1,0 +1,225 @@
+<h1>개발계획서</h1>
+<p class="dek">P0부터 P6까지, 각 단계의 <b>산출물·태스크·완료 기준</b>. 핵심 원칙은 하나 — <b>각 단계는 그 단계만으로 실제로 쓸 수 있어야</b> 합니다. P0만 끝나도 소설을 쓸 수 있습니다.</p>
+<div class="meta">
+  <span>대상 <b>개발자</b></span>
+  <span>선행 <b>02 설계서</b></span>
+  <span>총 <b>16~22주</b> (P6 제외)</span>
+</div>
+<!--BODY-->
+
+<h2 id="overview"><span class="num">1</span>전체 로드맵</h2>
+
+<div class="tbl">
+<table>
+<thead><tr><th>단계</th><th>기간</th><th>산출</th><th>완료 기준 (하나만)</th></tr></thead>
+<tbody>
+<tr><td><b>P0</b><br>읽기 전용 인덱스</td><td class="nm">1–2주</td><td>파일 규약 · 스키마 · SQLite · 툴 5개</td><td>Claude Code에서 <b>“한도영이 나오는 씬 전부”</b>가 답해진다</td></tr>
+<tr><td><b>P1</b><br>쓰기 경로</td><td class="nm">2–3주</td><td><code>propose · commit</code> · op 로그 · 삼중 시간축 · 프로버넌스</td><td>에이전트 편집이 전부 제안으로 들어오고, 충돌이 <b>덮어쓰기 없이</b> 보류된다</td></tr>
+<tr><td><b>P2</b><br>복선 + 진단</td><td class="nm">2–3주</td><td>Promise F–T–P · 가시성 · Tier 1 규칙 12개 · <code>check · promises</code></td><td><b>미회수 복선이 SQL 한 줄로 나온다</b></td></tr>
+<tr><td><b>P3</b><br>추출 + 검색</td><td class="nm">3–4주</td><td><code>ingest</code> 증분 추출 · 임베딩 · <code>trace · neighborhood · impact · query</code></td><td>새 챕터를 커밋하면 <b>0.5초 내</b>에 그래프가 갱신되고 파생 간선이 무효화된다</td></tr>
+<tr><td><b>P4</b><br>UI</td><td class="nm">4–6주</td><td>React 캔버스 · 복선 보드 · 이중 시간축 · <b>diff 뷰</b> · 검수 큐</td><td>사람의 편집과 캐스케이드 파생 편집이 <b>시각적으로 구분된다</b></td></tr>
+<tr><td><b>P5</b><br>도미노 v1</td><td class="nm">2–3주</td><td>전이적 dirty 마킹 · 위상 정렬 · <b>early cutoff</b> · 예산 · 사이클 처리</td><td>결정론 규칙만으로 전파가 돌고 <b>반드시 멈춘다</b></td></tr>
+<tr><td><b>P6</b><br>도미노 v2 <span class="pill w">선택</span></td><td class="nm">4주+</td><td>LLM 재도출 · 에이전트 세션 브랜치</td><td>P5가 실제로 쓰이기 시작한 뒤에만 착수</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key">
+  <div class="lbl">P0을 작게 유지하세요</div>
+  <p>온톨로지를 완성한 뒤 시작하려 하면 못 시작합니다. <b>P0에서는 노드 타입 6개만</b> — Character, Location, Object, Scene, Rule, Promise. 나머지는 <code>props</code> JSON에 담으세요. 어떤 타입이 진짜 필요한지는 <b>실제로 한 권을 쓰면서</b> 알게 됩니다.</p>
+</div>
+
+<h2 id="p0"><span class="num">2</span>P0 — 읽기 전용 인덱스</h2>
+<p class="lede">1~2주. 이 단계가 끝나면 손으로 채운 설정집을 에이전트가 조회할 수 있습니다. 쓰기는 아직 없습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>산출</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">0.1</td><td>저장소 레이아웃 확정, <code>.mcp.json</code> 작성</td><td>디렉터리 트리</td><td class="nm">0.5일</td></tr>
+<tr><td class="nm">0.2</td><td><code>spec/schema.sql</code> 적용 — node · edge · tag · node_tag · feature · evidence · FTS5</td><td><code>store/story.db</code></td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.3</td><td><code>core/ontology.py</code> — <code>spec/ontology.json</code> 로더, 타입·간선 검증</td><td>모듈</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.4</td><td><code>core/address.py</code> — 주소 파서, 접미사 매칭, 별칭 해석</td><td>모듈 + 테스트</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.5</td><td><code>core/traverse.py</code> — 재귀 CTE 순회 (<b>인터페이스 뒤에 은닉</b>)</td><td>모듈</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">0.6</td><td><code>bible/</code> 마크다운 → 그래프 로더 (수동 설정집 부트스트랩)</td><td>스크립트</td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.7</td><td>MCP 서버 뼈대 (FastMCP, stdio) + 툴 5개</td><td><code>server/</code></td><td class="nm">2일</td></tr>
+<tr><td class="nm">0.8</td><td>툴 설명 2KB 이하로 다듬기, <code>tools/list</code> 결정적 정렬</td><td>—</td><td class="nm">0.5일</td></tr>
+<tr><td class="nm">0.9</td><td>응답 강등 사다리 (<code>max_chars</code> → 개요 → 주소맵 → 개수+안내)</td><td><code>core/budget.py</code></td><td class="nm">1일</td></tr>
+<tr><td class="nm">0.10</td><td>Claude Code · Codex 양쪽에서 연결 확인</td><td>—</td><td class="nm">0.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>P0 완료 판정 스크립트</h4>
+<pre><code><span class="c"># 이 다섯 질문이 답해지면 P0 완료</span>
+1. outline(scope="book")                       <span class="c"># 전체 구조가 보이는가</span>
+2. find("한도영")                               <span class="c"># 별칭으로도 찾아지는가</span>
+3. get("character/한도영", include="brief")     <span class="c"># 요약이 1줄로 오는가</span>
+4. refs("character/한도영", dir="in")           <span class="c"># 역방향이 나오는가 ★</span>
+5. graph_schema()                              <span class="c"># 타입 체계를 스스로 알 수 있는가</span>
+
+<span class="c"># 그리고 4번이 8,000 토큰 안에 들어오는가 — 이게 진짜 기준</span></code></pre>
+
+<div class="note warn">
+  <div class="lbl">P0에서 하지 말 것</div>
+  <p><b>자동 추출을 만들지 마세요.</b> 손으로 채운 설정집만으로 P0~P2는 완전히 유용하고, 추출 품질은 스키마가 확정된 뒤에야 튜닝할 수 있습니다. 순서를 뒤집으면 잘못된 스키마 위에 추출기를 튜닝하게 됩니다.</p>
+</div>
+
+<h2 id="p1"><span class="num">3</span>P1 — 쓰기 경로</h2>
+<p class="lede">2~3주. 삼중 시간축과 프로버넌스가 <b>여기서 들어가야</b> 합니다. 나중에 얹을 수 없습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">1.1</td><td>스키마에 삼중 시간축 컬럼 추가 — node·edge 양쪽</td><td><b>P1을 넘기면 마이그레이션 불가</b></td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.2</td><td><code>op</code> · <code>proposal</code> 테이블 + <code>read_set</code> JSON</td><td>—</td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.3</td><td><code>core/ops.py</code> — 5개 verb 적용기 (ADD/UPDATE/INVALIDATE/LINK/UNLINK)</td><td>INVALIDATE는 <code>tx_to</code>만 닫음</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.4</td><td>충돌 판정 — <code>read_set</code> 리비전 대조 → 필드 단위 검사</td><td>Dolt 셀 단위 규칙</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.5</td><td>위험 등급 정책 엔진 (자동 / 검수 / 항상)</td><td><code>spec/policy.json</code>로 분리</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.6</td><td>프로버넌스 — PROV-O 6술어를 관계형으로</td><td><b>필드 단위</b>로. 위키데이터 실수 회피</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.7</td><td>Merkle — 노드 정규 직렬화 → <code>cid</code>, 그래프 루트</td><td>diff를 O(변경분)으로</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">1.8</td><td><code>propose</code> · <code>commit</code> 툴 + <code>idem_key</code> 중복 방지</td><td>빈 <code>read_set</code> 거부</td><td class="nm">2일</td></tr>
+<tr><td class="nm">1.9</td><td>단일 커밋 레인 (SQLite WAL + 직렬화 큐)</td><td>—</td><td class="nm">1일</td></tr>
+<tr><td class="nm">1.10</td><td><code>session/</code> 노드 규약 + AGENTS.md 인계 절</td><td>스위칭 전제</td><td class="nm">1일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p2"><span class="num">4</span>P2 — 복선과 진단</h2>
+<p class="lede">2~3주. <b>제품의 차별점이 여기서 나옵니다.</b></p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">2.1</td><td>Promise 노드 타입 + F–T–P 필드 + 상태 전이 검증</td><td>hypothetical → eligible → actualized</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">2.2</td><td><code>visibility</code> 테이블 + <code>reader</code> 원소 + 4개 술어</td><td>극적 아이러니 · 미스터리 · 반전 · 버그</td><td class="nm">2일</td></tr>
+<tr><td class="nm">2.3</td><td>씬 전이 계약 <code>{pre, post, forbid}</code> + <code>feasible()</code> 판정</td><td>ConWriter −82%의 근거</td><td class="nm">2일</td></tr>
+<tr><td class="nm">2.4</td><td>Tier 1 규칙 12개 구현 — <code>spec/rules.json</code> 기반, 전부 SQL</td><td>규칙 하나당 반나절</td><td class="nm">5일</td></tr>
+<tr><td class="nm">2.5</td><td>DAG 불변식 + 도달 가능성 검사 (매 쓰기마다)</td><td>PLOTTER의 두 불변식</td><td class="nm">1일</td></tr>
+<tr><td class="nm">2.6</td><td><code>check</code> · <code>promises</code> 툴</td><td>노드 단위·범위 단위 둘 다</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">2.7</td><td>S-Eff · Δ-Coh 계산 (초기엔 근사치로)</td><td>정밀화는 나중에</td><td class="nm">1.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note ok">
+  <div class="lbl">P2 완료 판정</div>
+  <p>일부러 심은 모순 다섯 개(왼손/오른손, 죽은 인물 재등장, 인물이 모르는 사실 발화, 회수 없는 복선, 트리거 없는 회수)를 <b>전부 <code>check</code>가 잡아내면</b> 완료입니다. LLM 호출 0회로.</p>
+</div>
+
+<h2 id="p3"><span class="num">5</span>P3 — 추출과 검색</h2>
+<p class="lede">3~4주. 비용은 검색이 아니라 <b>구축</b>에 있습니다 — 특성화 연구에서 디코드는 구축 토큰의 4.6%였습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">3.1</td><td>씬 경계 분할 — 시간·장소·인물 구성의 일관성 기준</td><td>Storyline Trees 정의</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.2</td><td>추출 프롬프트 v1 — 타입별 1패스, 근거 span 강제</td><td><code>prompts/v1/</code>, 덮어쓰기 금지</td><td class="nm">3일</td></tr>
+<tr><td class="nm">3.3</td><td><b>명시적 ID 바인딩</b> — 추출기가 언급을 ID에 묶게 강제</td><td>추론된 coref 신뢰 금지 (SOTA F1 36%)</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.4</td><td>증분 재인덱싱 + 하위 간선 무효화</td><td>NWM Publish 흐름</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.5</td><td>임베딩 파이프라인 + sqlite-vec 인덱스</td><td>로컬 모델</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.6</td><td>하이브리드 검색 — BM25 + dense + RRF 융합</td><td>BM25 반드시 병행</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.7</td><td><code>neighborhood</code> — 시드 랭킹 → 1-hop 확장 → 예산 절단</td><td><b>0.358 vs 0.898을 가른 부분</b></td><td class="nm">3일</td></tr>
+<tr><td class="nm">3.8</td><td><code>trace</code> · <code>impact</code> · <code>query</code> 툴</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">3.9</td><td>오프라인 통합 패스 (세션 사이 백그라운드)</td><td>LightMem sleep-time</td><td class="nm">2일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p4"><span class="num">6</span>P4 — UI</h2>
+<p class="lede">4~6주. 상세 화면 명세는 <a href="06-UI설계.html">06 UI 설계</a>에 있습니다.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">4.1</td><td>FastAPI — <code>core/</code>를 감싸는 REST 계층</td><td>MCP와 같은 코어 재사용</td><td class="nm">3일</td></tr>
+<tr><td class="nm">4.2</td><td>React + Vite + TS 셸, 디자인 토큰 적용</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.3</td><td>React Flow 캔버스 + elkjs 레이아웃 + 타입 필터</td><td>한 화면 수백 노드 상한</td><td class="nm">5일</td></tr>
+<tr><td class="nm">4.4</td><td>인스펙터 — 필드·시간축·전이계약·근거·참조·이력</td><td>—</td><td class="nm">4일</td></tr>
+<tr><td class="nm">4.5</td><td>복선 보드 (F–T–P 칸반)</td><td>—</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.6</td><td>이중 시간축 뷰</td><td>회상 자동 검출 시각화</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.7</td><td><b>검수 큐 + diff 뷰</b></td><td>제품 기능으로 정식 편성. 공짜로 안 나옴</td><td class="nm">5일</td></tr>
+<tr><td class="nm">4.8</td><td>사람 편집 vs 캐스케이드 파생 편집 <b>시각 구분</b></td><td>Patchwork가 막힌 지점</td><td class="nm">2일</td></tr>
+<tr><td class="nm">4.9</td><td><code>.lsp.json</code> — 진단을 에디터로 (선택, CC 전용)</td><td>있으면 질적으로 다른 제품</td><td class="nm">4일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="p5"><span class="num">7</span>P5 — 도미노 v1</h2>
+<p class="lede">2~3주. <b>LLM 없이</b> 만듭니다.</p>
+<div class="tbl">
+<table>
+<thead><tr><th>#</th><th>태스크</th><th>비고</th><th>공수</th></tr></thead>
+<tbody>
+<tr><td class="nm">5.1</td><td>역 <code>read_set</code> 인덱스 — 의존 그래프 구축</td><td>이미 P1에 데이터가 있음</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">5.2</td><td>전이적 dirty 마킹 + 위상 정렬</td><td>Excel 계산 체인 모델</td><td class="nm">2일</td></tr>
+<tr><td class="nm">5.3</td><td><b>early cutoff</b> — 정규화 구조 투영 비교</td><td><b>이게 없으면 안 멈춤</b></td><td class="nm">2일</td></tr>
+<tr><td class="nm">5.4</td><td>사이클 감지 + 기본 거부 + 옵트인 반복 제한</td><td>—</td><td class="nm">1.5일</td></tr>
+<tr><td class="nm">5.5</td><td>예산 — <code>max_depth</code> · <code>max_nodes</code> · 방문 집합</td><td>초과 시 fail-closed</td><td class="nm">1일</td></tr>
+<tr><td class="nm">5.6</td><td>캐스케이드 → 제안 발행 (자동 커밋 없음)</td><td>—</td><td class="nm">1.5일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="test"><span class="num">8</span>테스트와 회귀 스위트</h2>
+<p class="lede">P1부터 상시로 돌립니다. 전부 기존 연구의 방법을 그대로 씁니다.</p>
+
+<div class="grid3">
+  <div class="card"><div class="m">지표 1</div><h5>CED 회귀</h5>
+    <p>그래프를 켠 초고와 끈 초고를 같은 프롬프트로 뽑아 1만 단어당 오류를 비교. ConStory-Checker의 4단계 파이프라인(범주별 추출 → 쌍 비교 → 증거 체인 → 문자 오프셋 앵커 JSON)을 그대로 구현.</p></div>
+  <div class="card"><div class="m">지표 2</div><h5>통제 모순 주입</h5>
+    <p>FlawedFictionsMaker 방식 — 자기 소설에 <em>의도적으로</em> 모순을 심고 검출률 측정. <code>evals/injected/</code>에 케이스를 쌓습니다. 오염 없는 자체 회귀 스위트를 만드는 가장 싼 방법.</p></div>
+  <div class="card"><div class="m">지표 3</div><h5>토큰 예산</h5>
+    <p>챕터 한 편 집필 시 컨텍스트에 들어간 인덱스 토큰. <b>8,000 초과하면 실패</b>로 처리.</p></div>
+</div>
+
+<h4>단위 테스트에서 반드시 다룰 것</h4>
+<ul>
+  <li><b>시간 구간 경계</b> — <code>story_to</code>가 null인 경우, 구간이 정확히 맞닿는 경우, 역전된 경우</li>
+  <li><b>가시성 술어</b> — 네 가지 상태 각각의 최소 재현 케이스</li>
+  <li><b>복선 상태 전이</b> — 불법 전이(트리거 없이 actualized)가 거부되는가</li>
+  <li><b>충돌 판정</b> — 같은 필드/다른 필드, 리비전 일치/불일치 4조합</li>
+  <li><b>early cutoff</b> — 정규화 투영이 같으면 전파가 멈추는가 (문자열은 달라도)</li>
+  <li><b>순환</b> — <code>causes</code> 순환을 만드는 쓰기가 거부되는가</li>
+</ul>
+
+<div class="note warn">
+  <div class="lbl">단일 스칼라로 튜닝하지 마세요</div>
+  <p>WSE-bench는 일관성과 풍부함의 파레토 경계가 <b>non-concave</b>라서 <em>어떤 양의 선형 가중치로도</em> 여러 비지배 구성을 고를 수 없다고 보고했습니다. 그리고 StoryRMB는 기존 보상 모델 최고가 <b>66.3%</b>에 불과하다고 보고했습니다. <b>CED는 회귀 감시용이지 최적화 대상이 아닙니다.</b> 일관성 점수 하나를 목적함수로 삼으면 재미없는 소설로 수렴합니다.</p>
+</div>
+
+<h2 id="risk"><span class="num">9</span>리스크 레지스터</h2>
+<div class="tbl">
+<table>
+<thead><tr><th>리스크</th><th>근거</th><th>완화</th><th>단계</th></tr></thead>
+<tbody>
+<tr><td><b>온톨로지 과설계</b></td><td>Logseq가 유사 모델 프로덕션화에 3년, 여전히 데이터 손실 경고</td><td>P0은 타입 6개. 전체도 20개 상한. 표현력은 간선·태그에서</td><td class="nm">P0</td></tr>
+<tr><td><b>자동 추출 신뢰</b></td><td>BookCoref — 책 규모 상호참조 SOTA가 <b>CoNLL-F1 36%</b></td><td>추론된 coref 의존 금지. <b>명시적 ID 바인딩을 쓰기 경로에서 강제</b></td><td class="nm">P3</td></tr>
+<tr><td><b>관계 상태 적체</b></td><td>EvoSpark의 “social memory stacking”</td><td>관계 간선에 주기적 통합 경로 필수. append만으로는 안 됨</td><td class="nm">P3</td></tr>
+<tr><td><b>메모리가 오히려 해가 됨</b></td><td>DOME의 CED 1.033 &gt; 순수 GPT-5-R 0.113</td><td>Tier 1 결정론 규칙 먼저. 회귀 스위트로 상시 감시</td><td class="nm">P2</td></tr>
+<tr><td><b>에이전트가 툴을 안 씀</b></td><td>Mem2ActBench — 메모리를 능동적으로 파라미터에 반영 못 함</td><td>조회를 쓰기의 <em>전제조건</em>으로 강제. <code>propose</code>가 빈 <code>read_set</code> 거부</td><td class="nm">P1</td></tr>
+<tr><td><b>전파가 안 멈춤</b></td><td>LLM 비결정성 + RippleBench의 거리 무관 잔존 효과</td><td>early cutoff를 <b>P5 첫 태스크로</b>. 예산은 정책으로 하드컷</td><td class="nm">P5</td></tr>
+<tr><td>검수 피로</td><td>제안이 쌓이면 사람이 전부 무시</td><td>위험 등급 자동 승인 + 앰비언트 인라인 표시. 모달 금지</td><td class="nm">P4</td></tr>
+<tr><td>도메인 적합성</td><td>KG 보조는 <b>행위 중심 서사에만</b> 효과, 내면 서사엔 없음</td><td>제품 주장을 미스터리·스릴러로 한정</td><td class="nm">—</td></tr>
+<tr><td>단일 메인테이너 의존</td><td>Kuzu 아카이브 전례</td><td>0.x·단일 메인테이너 부품을 스택에 넣지 않음</td><td class="nm">P0</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="dont"><span class="num">10</span>하지 말아야 할 것</h2>
+<ul>
+  <li><b>파일 읽기를 감싼 얇은 MCP 툴을 만들지 마세요.</b> 에이전트는 이미 파일 툴을 갖고 있습니다. MCP에는 <em>에이전트가 스스로 못 하는 것</em>만 — 상태를 들고 있는 것, 계산이 필요한 것, 챕터를 가로지르는 검색.</li>
+  <li><b>노드 전문을 툴 결과로 반환하지 마세요.</b> 주소를 돌려주고 에이전트가 따로 요청하게 하세요.</li>
+  <li><b>MCP prompts를 진입점으로 쓰지 마세요.</b> Codex 클라이언트에 미구현입니다.</li>
+  <li><b>freshness 판단을 LLM에게 시키지 마세요.</b> 버전 번호가 <em>명시적으로 라벨링된</em> 과제에서조차 실패합니다 — 추출(LLM)과 선택(결정론)을 분리하면 54% → 82%.</li>
+  <li><b>믿음·상태를 in-place로 덮어쓰지 마세요.</b> “그때 그녀는 아직 몰랐다”를 구조적으로 못 쓰게 됩니다.</li>
+  <li><b>산문 속 언급을 자동으로 고치지 마세요.</b> soft 간선은 보고만 합니다.</li>
+  <li><b>캐스케이드가 canon을 자동 커밋하게 두지 마세요.</b> 항상 제안으로.</li>
+  <li><b>SKILL.md에 호스트 전용 frontmatter를 넣지 마세요.</b> 엄격 검증기에서 하드 에러입니다.</li>
+  <li><b>Codex CLI를 포크하지 마세요.</b> 월 900커밋, 안정적 out-of-tree API 없음, 유지되는 포크 사실상 0.</li>
+  <li><b>Roots · Sampling · Logging 위에 짓지 마세요.</b> 셋 다 deprecated입니다.</li>
+</ul>

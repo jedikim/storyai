@@ -1,0 +1,24 @@
+{
+  "SessionStart": [
+    {
+      "hooks": [
+        { "type": "command",
+          "command": "\"$(git rev-parse --show-toplevel)/hooks/run-check.sh\" book",
+          "timeout": 30,
+          "statusMessage": "연속성 진단 확인 중",
+          "additionalContextLimit": 2500 }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "^storyai__commit$",
+      "hooks": [
+        { "type": "command",
+          "command": "\"$(git rev-parse --show-toplevel)/hooks/run-check.sh\" changed",
+          "timeout": 60,
+          "statusMessage": "변경분 연속성 검사" }
+      ]
+    }
+  ]
+}

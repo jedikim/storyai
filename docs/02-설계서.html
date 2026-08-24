@@ -1,0 +1,1190 @@
+<title>설계서 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#666A7A; --muted-2:#8A8E9E;
+  --thread:#A9333F; --indigo:#365478; --moss:#42684A; --brass:#8C6B28;
+  --thread-bg:#F8EAEC; --indigo-bg:#E9EFF6; --moss-bg:#E9F1EA; --brass-bg:#F7F0DF;
+  --shadow:0 1px 2px rgba(23,26,36,.05), 0 10px 30px rgba(23,26,36,.06);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--thread);outline-offset:3px;border-radius:2px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1280px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:30px 20px 40px 24px;border-right:1px solid var(--line)}
+.doc{padding:32px 46px 110px;min-width:0}
+@media (max-width:960px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:20px 22px 16px}
+  .doc{padding:24px 20px 70px}
+}
+
+/* rail */
+.mk{display:flex;align-items:center;gap:9px;margin-bottom:6px;text-decoration:none;color:inherit}
+.mk b{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.rail .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin:0 0 18px 29px}
+.rail h4{margin:16px 0 6px;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.rail a.d{display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 11px;font-size:12.5px;
+  color:var(--muted);text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail a.d:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail a.d.cur{color:var(--ink);border-left-color:var(--thread);font-weight:600}
+.rail a.d .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);flex:none}
+.rail .toc{margin-top:18px}
+.rail .toc a{display:block;padding:2.5px 0 2.5px 11px;font-size:12px;color:var(--muted);
+  text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail .toc a:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail .toc a .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-right:5px}
+
+/* masthead */
+.mast{margin-bottom:42px}
+.mast .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--thread);font-weight:500;margin-bottom:12px}
+.mast h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.2vw,42px);line-height:1.2;
+  margin:0 0 12px;letter-spacing:-.025em;text-wrap:balance}
+.mast .dek{font-size:16px;color:var(--muted);max-width:62ch;margin:0 0 20px;line-height:1.66;font-weight:300}
+.mast .dek b{color:var(--ink);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-family:var(--mono);font-size:11px;
+  color:var(--muted-2);border-top:1px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+/* type */
+h2{font-family:var(--serif);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin:54px 0 4px;text-wrap:balance;scroll-margin-top:20px}
+h2 .num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--thread);
+  display:block;letter-spacing:.1em;margin-bottom:6px}
+h2+.lede{color:var(--muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;font-weight:300;line-height:1.62}
+h3{font-size:17px;font-weight:600;letter-spacing:-.012em;margin:34px 0 10px;scroll-margin-top:20px}
+h3 .num{font-family:var(--mono);font-size:12px;color:var(--muted-2);font-weight:500;margin-right:8px}
+h4{font-size:13.5px;font-weight:600;margin:22px 0 7px}
+p{margin:0 0 14px;max-width:74ch}
+strong,b{font-weight:600}
+a{color:var(--thread);text-underline-offset:2.5px;text-decoration-thickness:1px}
+ul,ol{margin:0 0 15px;padding-left:22px;max-width:74ch}
+li{margin-bottom:6px}
+li::marker{color:var(--muted-2)}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+blockquote{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;color:var(--muted);max-width:66ch;line-height:1.8}
+
+/* blocks */
+.key{border-left:3px solid var(--thread);background:var(--thread-bg);padding:14px 18px;margin:20px 0;
+  border-radius:0 8px 8px 0;max-width:76ch}
+.key .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:5px}
+.key p{max-width:none}.key p:last-child{margin-bottom:0}
+.note{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:14px 18px;
+  margin:20px 0;font-size:14px;max-width:76ch}
+.note .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:5px}
+.note p{max-width:none}.note p:last-child{margin-bottom:0}
+.note.warn{border-left:3px solid var(--brass);background:var(--brass-bg);border-color:transparent}
+.note.warn .lbl{color:var(--brass)}
+.note.ok{border-left:3px solid var(--moss);background:var(--moss-bg);border-color:transparent}
+.note.ok .lbl{color:var(--moss)}
+
+/* code */
+pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 17px;
+  overflow-x:auto;margin:18px 0;font-family:var(--mono);font-size:12.5px;line-height:1.68}
+pre code{background:none;border:none;padding:0;white-space:pre;font-size:inherit}
+pre .c{color:var(--muted-2)} pre .k{color:var(--indigo);font-weight:500}
+pre .s{color:var(--moss)} pre .t{color:var(--thread)}
+.codehead{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted-2);margin:20px 0 -10px;font-weight:600}
+
+/* tables */
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.55}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);font-weight:600;
+  background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap;font-size:11.5px}
+.nm{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.y{color:var(--moss);font-weight:500} td.n{color:var(--thread);font-weight:500}
+
+/* figures */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:20px 22px 16px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.6;max-width:74ch;
+  padding-top:12px;border-top:1px solid var(--line-soft)}
+figcaption b{color:var(--ink);font-weight:500}
+figure .fnum{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:10px}
+
+/* components */
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-family:var(--mono);
+  font-weight:500;vertical-align:middle}
+.pill.dev{background:var(--thread-bg);color:var(--thread)}
+.pill.evt{background:var(--indigo-bg);color:var(--indigo)}
+.pill.sub{background:var(--moss-bg);color:var(--moss)}
+.pill.w{background:var(--brass-bg);color:var(--brass)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin:20px 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
+.card h5{margin:0 0 6px;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.card p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.62;max-width:none}
+.card p+p{margin-top:8px}
+.card.acc{border-left:3px solid var(--thread)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:22px 0}
+.stat{background:var(--surface);padding:14px 16px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.stat .src{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+.tool{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin:12px 0;overflow:hidden}
+.tool>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);flex-wrap:wrap}
+.tool>header .tn{font-family:var(--mono);font-size:13px;font-weight:600}
+.tool>header .ro{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
+  background:var(--moss-bg);color:var(--moss);font-weight:500}
+.tool>header .rw{background:var(--brass-bg);color:var(--brass)}
+.tool>header .d{font-size:12.5px;color:var(--muted);margin-left:auto}
+.tool .body{padding:11px 14px}
+.tool pre{margin:0 0 9px;background:var(--paper);font-size:11.8px}
+.tool p{font-size:13px;color:var(--muted);margin:0;max-width:none;line-height:1.6}
+.rowlink{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;
+  text-decoration:none;color:var(--ink);margin:6px 8px 6px 0}
+.rowlink:hover{border-color:var(--thread)}
+.rowlink .a{color:var(--thread)}
+.refs{font-size:12.5px;line-height:1.7;column-count:2;column-gap:34px}
+@media (max-width:800px){.refs{column-count:1}}
+.refs div{break-inside:avoid;margin-bottom:7px;color:var(--muted)}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{border-bottom-color:var(--thread)}
+.refs .tag{font-family:var(--mono);font-size:10px;color:var(--thread);margin-right:5px}
+.trail{display:flex;gap:10px;flex-wrap:wrap;margin-top:60px;padding-top:22px;border-top:1px solid var(--line)}
+.trail a{flex:1;min-width:220px;text-decoration:none;color:inherit;border:1px solid var(--line);
+  border-radius:9px;padding:12px 15px;background:var(--surface)}
+.trail a:hover{border-color:var(--thread)}
+.trail .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.trail .t{font-size:14px;font-weight:600;margin-top:3px}
+</style>
+<div class="wrap">
+<nav class="rail">
+<a class="mk" href="index.html"><svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M3 2v20M17 2v20" stroke="currentColor" stroke-width="1.2" opacity=".3"/><path d="M3 7c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none"/><path d="M3 15c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none" opacity=".45"/></svg><b>storyai</b></a>
+<p class="sub">설계 문서 세트 v1</p>
+<h4>문서</h4>
+<a class="d" href="index.html"><span class="n">·</span><span>문서 허브</span></a>
+<a class="d" href="01-기획서.html"><span class="n">01</span><span>기획서</span></a>
+<a class="d cur" href="02-설계서.html"><span class="n">02</span><span>설계서</span></a>
+<a class="d" href="03-개발계획서.html"><span class="n">03</span><span>개발계획서</span></a>
+<a class="d" href="04-기술스택.html"><span class="n">04</span><span>기술 스택</span></a>
+<a class="d" href="05-구조도.html"><span class="n">05</span><span>구조도</span></a>
+<a class="d" href="06-UI설계.html"><span class="n">06</span><span>UI 설계</span></a>
+<a class="d" href="07-UI목업.html"><span class="n">07</span><span>UI 목업</span></a>
+<div class="toc"><h4>이 문서</h4><a href="#ontology"><span class="n">1</span>3층 온톨로지</a>
+<a href="#node"><span class="n">2</span>노드 공통 레코드와 주소 체계</a>
+<a href="#edge"><span class="n">3</span>간선 카탈로그 — hard와 soft</a>
+<a href="#time"><span class="n">4</span>삼중 시간축</a>
+<a href="#visibility"><span class="n">5</span>가시성 — 누가 무엇을 언제 아는가</a>
+<a href="#promise"><span class="n">6</span>복선 — F–T–P 3항 상태기계</a>
+<a href="#scene"><span class="n">7</span>씬 — STRIPS식 전이 계약</a>
+<a href="#sql"><span class="n">8</span>SQL 스키마</a>
+<a href="#tools"><span class="n">9</span>MCP 툴 15개</a>
+<a href="#ops"><span class="n">10</span>버전 관리 — op 로그와 충돌 판정</a>
+<a href="#prov"><span class="n">11</span>프로버넌스 — PROV-O 어휘만</a>
+<a href="#cascade"><span class="n">12</span>도미노 전파</a>
+<a href="#hosts"><span class="n">13</span>다중 호스트 — 한 벌로 양쪽</a></div>
+</nav>
+<main class="doc">
+<header class="mast">
+  <div class="eyebrow">storyai · 02 설계서 · 2026-08-24</div>
+  <h1>설계서</h1>
+<p class="dek">데이터 모델부터 MCP 툴 시그니처, 버전 관리, 변경 전파까지. <b>구현이 그대로 따라갈 수 있는 수준</b>으로 씁니다. 기계 판독용 정의는 <code>spec/</code>에 별도로 있습니다.</p>
+<div class="meta">
+  <span>대상 <b>개발자</b></span>
+  <span>선행 <b>01 기획서</b></span>
+  <span>부속 <b>spec/ontology.json · tools.json · rules.json · schema.sql</b></span>
+</div>
+
+</header>
+
+
+<h2 id="ontology"><span class="num">1</span>3층 온톨로지</h2>
+<p class="lede">노드 타입을 “엔티티”에서 멈추면 안 됩니다. <b>서사 기능</b>까지 내려가야 합니다.</p>
+
+<p>ATLAS의 7노드×5간선군과 NWM의 8레코드 스키마가 서로 독립적으로 거의 같은 결론에 도달했고, 두 곳 모두 일반 지식 그래프에 없는 것들 — <b>초점화자, 사건 순서 vs 폭로 순서, 약속의 개폐 상태</b> — 을 1급으로 둡니다. 작가가 실제로 던지는 질문이 전부 그 위에서 돕니다.</p>
+
+<figure>
+<div class="fnum">그림 1 — 노드 타입 체계</div>
+<svg viewBox="0 0 880 380" role="img" aria-label="세 층으로 나뉜 노드 타입. 아래층 원소는 존재하는 것, 가운데층 사건은 일어나는 것, 위층 서사 장치는 작가가 배치하는 것. 태그가 클래스로서 층을 가로질러 다중 상속을 만들고, 피처는 여러 타입에 붙는 프로퍼티 번들이다.">
+  <defs><marker id="d1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="20" width="620" height="86" rx="10" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="40" y="41" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--thread)" letter-spacing="1">LAYER 2 · DEVICE — 작가가 배치하는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)" text-anchor="middle">
+    <rect x="40" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="84" y="70">Promise</text><text x="84" y="83" font-size="9.5" opacity=".75">복선</text>
+    <rect x="136" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="180" y="70">Twist</text><text x="180" y="83" font-size="9.5" opacity=".75">반전</text>
+    <rect x="232" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="276" y="70">Reveal</text><text x="276" y="83" font-size="9.5" opacity=".75">폭로</text>
+    <rect x="328" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="372" y="70">Fact</text><text x="372" y="83" font-size="9.5" opacity=".75">사실·가시성</text>
+    <rect x="424" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="468" y="70">Thread</text><text x="468" y="83" font-size="9.5" opacity=".75">플롯라인</text>
+    <rect x="520" y="52" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="572" y="70">Arc</text><text x="572" y="83" font-size="9.5" opacity=".75">인물 아크</text>
+  </g>
+  <rect x="24" y="126" width="620" height="86" rx="10" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.3"/>
+  <text x="40" y="147" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--indigo)" letter-spacing="1">LAYER 1 · EVENT — 일어나는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--indigo)" text-anchor="middle">
+    <rect x="40" y="158" width="120" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1.6"/><text x="100" y="176" font-weight="600">Scene</text><text x="100" y="189" font-size="9.5" opacity=".75">원자 단위</text>
+    <rect x="168" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="220" y="176">Event</text><text x="220" y="189" font-size="9.5" opacity=".75">작중 사건</text>
+    <rect x="280" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="332" y="176">Beat</text><text x="332" y="189" font-size="9.5" opacity=".75">극적 비트</text>
+    <rect x="392" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="444" y="176">Chapter</text><text x="444" y="189" font-size="9.5" opacity=".75">담기 단위</text>
+    <rect x="504" y="158" width="120" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="564" y="176">Act</text><text x="564" y="189" font-size="9.5" opacity=".75">막</text>
+  </g>
+  <rect x="24" y="232" width="620" height="86" rx="10" fill="var(--moss-bg)" stroke="var(--moss)" stroke-width="1.3"/>
+  <text x="40" y="253" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">LAYER 0 · SUBSTANCE — 존재하는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--moss)" text-anchor="middle">
+    <rect x="40" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="92" y="282">Character</text><text x="92" y="295" font-size="9.5" opacity=".75">인물</text>
+    <rect x="152" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="204" y="282">Location</text><text x="204" y="295" font-size="9.5" opacity=".75">장소</text>
+    <rect x="264" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="316" y="282">Object</text><text x="316" y="295" font-size="9.5" opacity=".75">소품</text>
+    <rect x="376" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="428" y="282">Faction</text><text x="428" y="295" font-size="9.5" opacity=".75">세력</text>
+    <rect x="488" y="264" width="136" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="556" y="282">Rule / Concept</text><text x="556" y="295" font-size="9.5" opacity=".75">세계 규칙·용어</text>
+  </g>
+  <rect x="676" y="20" width="180" height="298" rx="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4" opacity=".7"/>
+  <text x="766" y="42" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".75">횡단 · CROSS-CUTTING</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="currentColor" text-anchor="middle">
+    <rect x="694" y="58" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="78" font-weight="600">Tag = 클래스</text><text x="766" y="95" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">extends → 다중 부모</text>
+    <rect x="694" y="122" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="142" font-weight="600">Feature</text><text x="766" y="159" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">프로퍼티 번들 (평면)</text>
+    <rect x="694" y="186" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="206" font-weight="600">Group</text><text x="766" y="223" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">임의 묶음 · 뷰</text>
+    <text x="766" y="262" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">한 노드가</text>
+    <text x="766" y="278" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">여러 Tag를 가짐</text>
+    <text x="766" y="298" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">Feature는 여러 타입에</text>
+  </g>
+  <line x1="672" y1="82" x2="648" y2="72" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#d1a)"/>
+  <line x1="672" y1="148" x2="648" y2="176" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#d1a)"/>
+  <line x1="672" y1="212" x2="648" y2="282" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#d1a)"/>
+  <text x="24" y="352" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">예 · 한도영 = Character + #Suspect + #POV + Feature(Wounded) + Feature(SecretKeeper)</text>
+  <text x="24" y="370" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".6">타입은 하나, 태그는 여럿, 피처는 붙였다 뗐다 — 이게 “다중 상속”의 실제 구현입니다.</text>
+</svg>
+<figcaption>Layer 2가 이 시스템의 존재 이유입니다. <b>Layer 0·1만 있으면 그냥 위키</b>고, 기존 소설 도구가 전부 거기서 멈춰 있습니다. 다중 상속은 클래스 계층이 아니라 <b>태그(의미) + 피처(데이터)</b> 두 축으로 구현합니다 — 피처가 평면 데이터라 다이아몬드 문제가 원천적으로 없습니다.</figcaption>
+</figure>
+
+<div class="note warn">
+  <div class="lbl">과설계 경고</div>
+  <p>Logseq가 유사한 태그–클래스–다중상속 데이터 모델을 프로덕션에 올리는 데 <b>3년</b>이 걸렸고 아직 데이터 손실 경고를 달고 있습니다. <b>노드 타입은 20개를 넘기지 마세요.</b> 위 16개면 충분하고, 진짜 표현력은 타입 개수가 아니라 <em>간선 타입과 태그</em>에서 나옵니다. P0에서는 <b>6개만</b> 씁니다(<a href="03-개발계획서.html#p0">개발계획 §P0</a>).</p>
+</div>
+
+<h2 id="node"><span class="num">2</span>노드 공통 레코드와 주소 체계</h2>
+<p>모든 노드는 같은 껍데기를 공유하고 타입별 필드는 <code>props</code> JSON에 담습니다. 이게 스키마 진화를 견디게 합니다.</p>
+
+<pre><code><span class="k">Node</span> {
+  <span class="c">// 신원</span>
+  id            <span class="s">"character/한도영"</span>      <span class="c">// 사람이 읽는 주소, UUID 금지</span>
+  kind          <span class="s">"Character"</span>             <span class="c">// 16개 타입 중 하나</span>
+  layer         <span class="s">"substance"</span>             <span class="c">// kind에서 파생</span>
+  title         <span class="s">"한도영"</span>
+  aliases       [<span class="s">"도영"</span>, <span class="s">"등대지기"</span>]      <span class="c">// 언급 바인딩용</span>
+
+  <span class="c">// 분류 — 다중 상속</span>
+  tags          [<span class="s">"#Character"</span>, <span class="s">"#Suspect"</span>, <span class="s">"#POV"</span>]
+  features      { Wounded: {…}, SecretKeeper: {…} }
+
+  <span class="c">// 내용</span>
+  props         { <span class="s">"주손"</span>: <span class="s">"왼손"</span>, <span class="s">"나이"</span>: 47 }
+  summary       <span class="s">"등대지기. 3장부터 용의선상."</span>   <span class="c">// hover 등가물, 1줄</span>
+
+  <span class="c">// 삼중 시간축 — §4</span>
+  story_from    3        story_to     null
+  reveal_at     2        <span class="c">// 독자에게 드러난 시점</span>
+  tx_from       <span class="s">"2026-08-19T13:58Z"</span>   tx_to  null
+
+  <span class="c">// 가시성 — §5</span>
+  visible_to    [<span class="s">"reader"</span>, <span class="s">"character/한도영"</span>]
+
+  <span class="c">// 근거·출처</span>
+  evidence      [{ file: <span class="s">"ch03.md"</span>, start: 1840, end: 1902 }]
+  origin        <span class="s">"human"</span> | <span class="s">"agent"</span> | <span class="s">"cascade"</span>
+  locked        <span class="k">false</span>    <span class="c">// canon 잠금: true면 제안 자동승인 불가</span>
+  rev           9        <span class="c">// 노드 리비전 — 낙관적 동시성</span>
+  cid           <span class="s">"b3f1…"</span>  <span class="c">// 정규 직렬화 해시 — Merkle 루트용</span>
+}</code></pre>
+
+<div class="key">
+  <div class="lbl">주소 설계 — UUID를 노출하지 마세요</div>
+  <p>Anthropic의 공개 지침이 명확합니다 — <b>“임의의 영숫자 UUID를 의미 있는 언어로 바꾸는 것만으로 Claude의 정확도가 크게 향상된다.”</b> 주소는 종류가 보이고, 접미사로 매칭되고, 사람이 추측할 수 있어야 합니다.</p>
+</div>
+
+<pre><code><span class="c">// 절대 주소 — 정확 일치</span>
+story://character/한도영
+story://scene/A2.C14.S01          <span class="c">// 막.장.씬</span>
+story://promise/젖은장갑
+
+<span class="c">// 접미사 매칭 — 에이전트가 산문에서 읽은 이름으로 바로 조회</span>
+한도영              → character/한도영
+A2.C14.S01          → scene/A2.C14.S01
+장갑                → object/젖은장갑  (별칭 + 퍼지)
+
+<span class="c">// 중복 시 인덱스 접미</span>
+character/김철수[0]  character/김철수[1]</code></pre>
+
+<h2 id="edge"><span class="num">3</span>간선 카탈로그 — hard와 soft</h2>
+<p>간선은 두 부류입니다. <b>hard</b>는 기계가 갱신할 수 있고 리네임·삭제 시 연쇄합니다. <b>soft</b>는 산문 속 언급이라 <em>보고만 하고 절대 자동 편집하지 않습니다</em>.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>군</th><th>간선</th><th>종류</th><th>제약 / 용도</th></tr></thead>
+<tbody>
+<tr><td rowspan="3">구조</td><td><code>contains</code></td><td class="y">hard</td><td>Act→Chapter→Scene. DAG 강제</td></tr>
+<tr><td><code>extends</code></td><td class="y">hard</td><td>Tag 다중 상속. 순환 금지</td></tr>
+<tr><td><code>member_of</code></td><td class="y">hard</td><td>Group 소속. 다중 소속 허용</td></tr>
+<tr><td rowspan="3">사건–역할</td><td><code>performs</code></td><td class="y">hard</td><td>인물 → 씬. 행위 주체</td></tr>
+<tr><td><code>undergoes</code></td><td class="y">hard</td><td>인물/사물 → 씬. 피동</td></tr>
+<tr><td><code>focalizes</code></td><td class="y">hard</td><td>초점화자. <b>씬당 최대 1</b> (POV 검증용)</td></tr>
+<tr><td rowspan="2">시공간</td><td><code>occurs_at</code></td><td class="y">hard</td><td>씬 → 장소</td></tr>
+<tr><td><code>present_at</code></td><td class="y">hard</td><td>인물/사물 → 씬. <b>동시 재석 검사</b>의 근거</td></tr>
+<tr><td rowspan="4">인과</td><td><code>causes</code></td><td class="y">hard</td><td>사건 → 사건. <b>DAG 불변식</b> 적용</td></tr>
+<tr><td><code>enables</code></td><td class="y">hard</td><td>선행 조건</td></tr>
+<tr><td><code>prevents</code></td><td class="y">hard</td><td>차단</td></tr>
+<tr><td><code>precedes</code></td><td class="y">hard</td><td>작중 시간 순서</td></tr>
+<tr><td rowspan="5"><b>서사 장치</b></td><td><code>plants</code></td><td class="y">hard</td><td>씬 → 복선. <b>설정 지점</b></td></tr>
+<tr><td><code>requires_trigger</code></td><td class="y">hard</td><td>복선 → 트리거 조건. <b>없으면 판정 불가</b></td></tr>
+<tr><td><code>pays_off</code></td><td class="y">hard</td><td>씬 → 복선. <code>story_from</code> 순서 검사</td></tr>
+<tr><td><code>reveals</code></td><td class="y">hard</td><td>씬 → 사실. <code>visible_to</code>를 변경</td></tr>
+<tr><td><code>contradicts</code></td><td class="y">hard</td><td>진단이 생성. <b>사람만 해소</b></td></tr>
+<tr><td rowspan="3">사회·소유</td><td><code>kin_of</code> <code>ally_of</code> <code>hostile_to</code></td><td class="y">hard</td><td>극성 + 유효 구간</td></tr>
+<tr><td><code>owns</code> <code>uses</code></td><td class="y">hard</td><td>소유 이력. 구간으로 저장</td></tr>
+<tr><td><code>part_of</code></td><td class="y">hard</td><td>부분–전체</td></tr>
+<tr><td rowspan="2">근거</td><td><code>grounded_in</code></td><td class="y">hard</td><td>노드 → 원문 span. 프로버넌스</td></tr>
+<tr><td><code>mentioned_in</code></td><td class="n">soft</td><td>산문 언급. <b>보고만, 자동 편집 금지</b></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>간선도 노드와 같은 삼중 시간축을 갖습니다. “한도영이 서지운에게 적대적” 같은 관계는 <em>언제부터 언제까지</em> 참인지가 본질이라, 간선을 덮어쓰면 “그때는 아직 우호적이었다”를 쓸 수 없게 됩니다.</p>
+
+<div class="key">
+  <div class="lbl">hard/soft 구분이 없으면 원고가 망가집니다</div>
+  <p>Serena의 <code>rename_memory</code>는 <code>mem:</code> 접두어로 <b>표시된 참조만</b> 갱신합니다. 같은 원리로 — <b>산문 속 “도영”이라는 이름은 무언가가 그걸 참조로 등록해두지 않았다면 연쇄 대상이 아닙니다.</b> 등록되지 않은 언급을 자동으로 고치려 드는 순간 원고가 망가집니다.</p>
+</div>
+
+<h2 id="time"><span class="num">4</span>삼중 시간축</h2>
+<p class="lede">표준 bitemporal(SQL:2011)은 두 축입니다 — 유효 시간과 트랜잭션 시간. <b>소설은 세 축이 필요합니다.</b></p>
+
+<figure>
+<div class="fnum">그림 2 — 세 개의 시간축</div>
+<svg viewBox="0 0 880 300" role="img" aria-label="세 개의 시간축. 작중 시간, 독자 인지 시간, 편집 시간이 같은 사실에 대해 각각 다른 구간을 갖는다. 작중 시간이 독자 인지 시간보다 앞서면 회상이고, 편집 시간의 두 구간은 사람이 에이전트의 주장을 정정한 이력이다.">
+  <defs><marker id="d2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="22" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">사실 · “한도영은 왼손잡이다”</text>
+  <text x="20" y="66" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--indigo)">story</text>
+  <text x="20" y="82" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">작중 시간</text>
+  <line x1="150" y1="66" x2="840" y2="66" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="150" y="58" width="620" height="16" rx="4" fill="var(--indigo)" opacity=".28"/>
+  <text x="460" y="70" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--indigo)" font-weight="600">1장 – 끝 · 계속 참</text>
+  <text x="20" y="140" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--thread)">discourse</text>
+  <text x="20" y="156" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">독자 인지</text>
+  <line x1="150" y1="140" x2="840" y2="140" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="392" y="132" width="378" height="16" rx="4" fill="var(--thread)" opacity=".3"/>
+  <line x1="392" y1="120" x2="392" y2="160" stroke="var(--thread)" stroke-width="2"/>
+  <text x="400" y="116" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)" font-weight="600">9장 · 여기서 밝혀짐</text>
+  <text x="580" y="144" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">독자가 아는 구간</text>
+  <path d="M392 78 L392 126" stroke="var(--thread)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#d2a)" color="var(--thread)"/>
+  <path d="M160 78 Q 270 104 384 126" stroke="var(--thread)" stroke-width="1.4" fill="none" stroke-dasharray="4 3" opacity=".8"/>
+  <text x="196" y="108" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="var(--thread)">↺ 8장 회상이 이 간격을 메움</text>
+  <text x="20" y="216" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="currentColor" opacity=".8">transaction</text>
+  <text x="20" y="232" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">편집 이력</text>
+  <line x1="150" y1="216" x2="840" y2="216" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="150" y="208" width="250" height="16" rx="4" fill="var(--brass)" opacity=".3"/>
+  <rect x="404" y="208" width="366" height="16" rx="4" fill="currentColor" opacity=".22"/>
+  <text x="275" y="220" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">r7 · 에이전트 주장 (13:58)</text>
+  <text x="587" y="220" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".75">r9 · 사람이 확정 (14:02)</text>
+  <line x1="402" y1="200" x2="402" y2="232" stroke="currentColor" stroke-width="1.6"/>
+  <text x="150" y="252" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">r7은 삭제되지 않고 tx_to가 닫힐 뿐 — “왜 그렇게 알고 있었나”가 영구 조회 가능</text>
+  <rect x="150" y="268" width="690" height="26" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="1" opacity=".7"/>
+  <text x="164" y="285" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">회상 = story_from &lt; reveal_at   ·   극적 아이러니 = reader ∈ V ∧ character ∉ V   ·   리트콘 = tx 구간이 둘 이상</text>
+</svg>
+<figcaption><b>회상은 기능이 아니라 두 필드의 불일치입니다.</b> 작가가 “여기는 회상”이라고 따로 태그하지 않아도 <code>story_from &lt; reveal_at</code>에서 자동으로 나옵니다. STORYWRITER(CIKM 2025)의 플래시백 처리가 정확히 이 두 필드이고, 인과 DAG는 fabula 순서로 유지한 채 챕터 배정만 다르게 하는 것이 전부입니다.</figcaption>
+</figure>
+
+<div class="note">
+  <div class="lbl">덮어쓰기 금지의 실증 근거</div>
+  <p>DToM-Track(arXiv:2603.14646)이 3B~70B 전 모델에서 <b>갱신 후 질문 63.9% vs 갱신 전 질문 27.7%</b>라는 36점 격차를 보고했습니다. 믿음을 in-place로 덮어쓰면 모델은 과거 상태를 구조적으로 복원하지 못합니다. <b>append-only + 구간 스탬프가 선택이 아니라 필수</b>인 이유입니다.</p>
+</div>
+
+<h2 id="visibility"><span class="num">5</span>가시성 — 누가 무엇을 언제 아는가</h2>
+<p class="lede">이 프로젝트에서 <b>가장 가치가 높은 단일 필드</b>입니다.</p>
+
+<pre><code><span class="k">Fact</span> {
+  subject    <span class="s">"character/한도영"</span>
+  predicate  <span class="s">"was_at"</span>
+  object     <span class="s">"location/폐선착장"</span>
+  cause      <span class="s">"만조를 피하려고"</span>
+  visible_to [<span class="s">"reader"</span>, <span class="s">"character/한도영"</span>]     <span class="c">// V ⊆ {reader} ∪ Characters</span>
+  learned_at { <span class="s">"character/서지운"</span>: 14 }        <span class="c">// 인물별 인지 시점</span>
+  pathway    <span class="s">"direct"</span>                        <span class="c">// direct|observed|told|common</span>
+}
+
+<span class="c">// 네 가지 서사 상태가 전부 하나의 술어로 환원됩니다</span>
+<span class="k">극적 아이러니</span>   reader ∈ V  ∧  c ∉ V        <span class="c">// 독자만 안다</span>
+<span class="k">미스터리</span>       reader ∉ V  ∧  ∃c ∈ V       <span class="c">// 인물만 안다</span>
+<span class="k">반전</span>           V를 변경하는 예약 이벤트
+<span class="k">연속성 버그</span>    c ∉ V 인데 c가 그 사실을 발화  <span class="t">← 자동 검출</span></code></pre>
+
+<p>원 논문(ReverieMem)의 가시성 집합은 인물만 포함합니다. <b>여기에 <code>reader</code>를 원소로 추가한 것이 이 설계의 확장</b>이고, 그 덕에 극적 아이러니와 미스터리가 같은 술어의 두 경우가 됩니다. 원 논문은 이 구조로 <b>지식 경계 충실도 73.3점(+34.6)</b>, 보이지 않는 사실 거부 정확도 <b>81.2%</b>를 기록했습니다.</p>
+
+<div class="note warn">
+  <div class="lbl">동일 논문의 ablation 경고</div>
+  <p><b>인물별 경험 인덱스(episodic)와 전역 사실 인덱스(semantic)를 둘 다 유지해야 합니다.</b> 에피소딕을 빼면 회상률은 <em>올라가지만</em> 거부 정확도가 무너지고, 시맨틱을 빼면 정반대로 실패합니다. 하나만 두면 예측 가능한 방향으로 망가집니다.</p>
+</div>
+
+<h2 id="promise"><span class="num">6</span>복선 — F–T–P 3항 상태기계</h2>
+<p class="lede">대부분의 시스템은 복선을 <b>설정→회수</b> 2항 간선으로 모델링합니다. 그러면 두 가지 서로 다른 버그를 구분할 수 없습니다.</p>
+
+<p>CFPG(UCSD, 2026-01)의 기여는 가운데에 <b>트리거</b>를 낀 3항 구조입니다. 트리거는 “복선이 회수 가능해지기 위해 먼저 일어나야 하는 서사적 선행 조건”이고, 이게 있어야 <em>조기 회수(서스펜스 파괴)</em>와 <em>미회수(논리 붕괴)</em>가 갈립니다.</p>
+
+<figure>
+<div class="fnum">그림 3 — 복선 상태기계</div>
+<svg viewBox="0 0 880 310" role="img" aria-label="복선의 상태기계. hypothetical에서 시작해 트리거가 발화하면 eligible, 회수 씬이 배치되면 actualized가 된다. 트리거 없이 회수하면 근거 없는 해결로, 끝까지 hypothetical이면 방치된 복선으로 표시된다.">
+  <defs><marker id="d3a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Sans KR,sans-serif" text-anchor="middle">
+    <rect x="30" y="96" width="140" height="58" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.5"/>
+    <text x="100" y="120" font-size="13" font-weight="600" fill="currentColor">hypothetical</text>
+    <text x="100" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".65">심겼음 · 대기</text>
+    <rect x="290" y="96" width="140" height="58" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.5"/>
+    <text x="360" y="120" font-size="13" font-weight="600" fill="var(--brass)">eligible</text>
+    <text x="360" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--brass)" opacity=".85">회수 가능</text>
+    <rect x="550" y="96" width="140" height="58" rx="9" fill="var(--moss-bg)" stroke="var(--moss)" stroke-width="1.5"/>
+    <text x="620" y="120" font-size="13" font-weight="600" fill="var(--moss)">actualized</text>
+    <text x="620" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--moss)" opacity=".85">회수 완료</text>
+    <rect x="740" y="24" width="126" height="48" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5" stroke-dasharray="4 3"/>
+    <text x="803" y="44" font-size="12" fill="currentColor" opacity=".75">prevented</text>
+    <text x="803" y="61" font-size="10" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".55">의도적 폐기</text>
+  </g>
+  <line x1="174" y1="125" x2="284" y2="125" stroke="currentColor" stroke-width="1.6" marker-end="url(#d3a)"/>
+  <text x="229" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" font-weight="600">T 발화</text>
+  <text x="229" y="145" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="currentColor" opacity=".6">codify(context, T) = true</text>
+  <line x1="434" y1="125" x2="544" y2="125" stroke="var(--moss)" stroke-width="1.6" marker-end="url(#d3a)" color="var(--moss)"/>
+  <text x="489" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--moss)" font-weight="600">P 배치</text>
+  <text x="489" y="145" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="var(--moss)" opacity=".8">회수 씬이 씌어짐</text>
+  <path d="M690 110 Q 730 90 740 62" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".45" stroke-dasharray="4 3"/>
+  <path d="M170 110 Q 420 20 738 44" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".4" stroke-dasharray="4 3" marker-end="url(#d3a)"/>
+  <text x="430" y="30" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="currentColor" opacity=".55">레드헤링으로 정리</text>
+  <path d="M100 158 Q 100 220 350 220" stroke="var(--thread)" stroke-width="1.7" fill="none" marker-end="url(#d3a)" color="var(--thread)"/>
+  <rect x="352" y="204" width="196" height="32" rx="7" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="450" y="224" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" font-weight="600" fill="var(--thread)">근거 없는 해결</text>
+  <text x="222" y="212" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--thread)">T 없이 P 배치</text>
+  <rect x="30" y="252" width="518" height="34" rx="7" fill="none" stroke="var(--thread)" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="46" y="273" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" font-weight="600" fill="var(--thread)">방치된 복선</text>
+  <text x="150" y="273" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)" opacity=".85">status = hypothetical AND book_complete  ← SQL 한 줄로 나옴</text>
+  <rect x="580" y="180" width="286" height="106" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1" opacity=".8"/>
+  <text x="598" y="202" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".7">노드에 저장되는 측정값</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="598" y="224"><tspan font-weight="600">S-Eff</tspan>   첫 독서 시 티나는 정도 — 낮을수록 좋음</text>
+    <text x="598" y="244"><tspan font-weight="600">Δ-Coh</tspan>   사후 납득도 — 높을수록 좋음</text>
+    <text x="598" y="264"><tspan font-weight="600">debt</tspan>    미회수 부채 가중치</text>
+    <text x="598" y="280" opacity=".6">좋은 단서 = 낮은 S-Eff × 높은 Δ-Coh</text>
+  </g>
+</svg>
+<figcaption>정보이론적 <b>페어플레이</b> 정식화(arXiv:2507.13841)가 두 측정값의 근거입니다 — 놀라움과 납득은 <em>단일 독자 모델에서는</em> 반드시 상충하지만, 폭로 전 독자와 사후 독자를 분리하면 공존합니다. 그 두 평가를 그래프에서 각각 계산할 수 있으므로 미스터리의 균형을 정량적으로 조정할 수 있게 됩니다.</figcaption>
+</figure>
+
+<p>CFPG의 측정치가 트리거의 값어치를 보여줍니다. 미회수 목록을 프롬프트에 그냥 나열하는 베이스라인 대비, F–T–P 게이트를 쓰면 <b>조기 트리거 235건 → 166건(−29.3%)</b>, 연속성 충실도 <b>0.453 → 0.647(+43%)</b>, 검출 정확도 58.0% → 69.8%였습니다.</p>
+
+<div class="key">
+  <div class="lbl">가장 훔칠 만한 한 줄</div>
+  <p>Elson의 Story Intention Graph(LREC 2012)가 15년 전에 이미 답을 냈습니다 — 모든 해석 노드에 <b>actualization status ∈ {Hypothetical, Actualized, Prevented}</b>를 다는 것. 미회수 복선은 “끝까지 Hypothetical인 노드”이고, <b>LLM 없이 계산되는 쿼리</b>가 됩니다.</p>
+</div>
+
+<h2 id="scene"><span class="num">7</span>씬 — STRIPS식 전이 계약</h2>
+<p>씬 노드에 <code>{Pre, Post, Forbid}</code> 세 술어 집합을 답니다. 같은 연산자가 <b>생성 제약이자 검증 술어</b>로 쓰이는 게 핵심입니다.</p>
+
+<pre><code><span class="k">Scene</span> <span class="s">"scene/A2.C14.S01"</span> {
+  pre    [<span class="s">"장갑 젖음 확립"</span>, <span class="s">"만조 고립 규칙 유효"</span>]   <span class="c">// 참이 아니면 이 씬은 못 씀</span>
+  post   [<span class="s">"조수 시간표 공개"</span>, <span class="s">"도영 알리바이 붕괴"</span>]  <span class="c">// 이 씬이 확립하는 것</span>
+  forbid [<span class="s">"진범 직접 명시"</span>]                        <span class="c">// 여기서 위반하면 안 되는 것</span>
+}
+
+<span class="c">// 실행 가능성 판정 — LLM 없이</span>
+feasible(s) ⟺ ∀c ∈ Pre(s) : M ⊨ c
+<span class="c">// 커밋 후 기대 상태</span>
+M' = Apply(M, Post(s))</code></pre>
+
+<p>ConWriter(arXiv:2608.05169)가 이 구조만으로 6,000단어 기준 <b>일관성 오류 밀도 0.4109 → 0.0728 (−82%)</b>를 냈습니다. 그리고 위반 시 <b>씬 전체 재생성이 아니라 위반 문장만 국소 패치</b>합니다 — 편집 비용이 유계로 유지되는 이유입니다.</p>
+
+<p>여기에 PLOTTER(Findings ACL 2026)의 두 가지 <b>결정론적 불변식</b>을 매 쓰기마다 검사합니다. 둘 다 LLM 호출이 필요 없는 순수 그래프 연산입니다.</p>
+<ul>
+  <li><b>인과 합리성</b> — <code>causes</code> 간선 그래프는 DAG를 유지한다. 순환이 생기면 쓰기를 거부한다.</li>
+  <li><b>서사 완결성</b> — 모든 사건 노드는 시작 노드와 끝 노드 양쪽에서 도달 가능하다. 고립된 사건은 버려진 플롯이다.</li>
+</ul>
+
+<h2 id="sql"><span class="num">8</span>SQL 스키마</h2>
+<p>SQLite 단일 파일. 그래프 DB를 쓰지 않는 이유는 <a href="04-기술스택.html#rejected">기술 스택 §거부한 선택지</a>에 있습니다. 전체 DDL은 <code>spec/schema.sql</code>이고, 아래는 핵심만 발췌한 것입니다.</p>
+
+<div class="codehead">spec/schema.sql (발췌)</div>
+<pre><code><span class="k">CREATE TABLE</span> node (
+  id            <span class="k">TEXT PRIMARY KEY</span>,          <span class="c">-- "character/한도영"</span>
+  kind          <span class="k">TEXT NOT NULL</span>,
+  title         <span class="k">TEXT NOT NULL</span>,
+  summary       <span class="k">TEXT</span>,                       <span class="c">-- hover 등가물, 1줄</span>
+  props         <span class="k">TEXT NOT NULL DEFAULT</span> <span class="s">'{}'</span>, <span class="c">-- JSON</span>
+  story_from    <span class="k">INTEGER</span>, story_to <span class="k">INTEGER</span>,   <span class="c">-- 작중 시간</span>
+  reveal_at     <span class="k">INTEGER</span>,                    <span class="c">-- 독자 인지 시점</span>
+  tx_from       <span class="k">TEXT NOT NULL</span>, tx_to <span class="k">TEXT</span>,   <span class="c">-- NULL = 현재 유효</span>
+  origin        <span class="k">TEXT NOT NULL</span>,              <span class="c">-- human | agent | cascade</span>
+  locked        <span class="k">INTEGER NOT NULL DEFAULT</span> 0,
+  rev           <span class="k">INTEGER NOT NULL DEFAULT</span> 1,
+  cid           <span class="k">TEXT NOT NULL</span>,
+  <span class="k">CHECK</span> (story_to <span class="k">IS NULL OR</span> story_to &gt;= story_from)
+);
+<span class="k">CREATE INDEX</span> ix_node_kind   <span class="k">ON</span> node(kind, tx_to);
+<span class="k">CREATE INDEX</span> ix_node_story  <span class="k">ON</span> node(story_from, story_to);
+<span class="k">CREATE INDEX</span> ix_node_reveal <span class="k">ON</span> node(reveal_at);
+
+<span class="k">CREATE TABLE</span> edge (
+  id            <span class="k">INTEGER PRIMARY KEY</span>,
+  src           <span class="k">TEXT NOT NULL REFERENCES</span> node(id),
+  dst           <span class="k">TEXT NOT NULL REFERENCES</span> node(id),
+  rel           <span class="k">TEXT NOT NULL</span>,              <span class="c">-- plants | causes | owns …</span>
+  hard          <span class="k">INTEGER NOT NULL DEFAULT</span> 1, <span class="c">-- 0 = soft(산문 언급)</span>
+  story_from    <span class="k">INTEGER</span>, story_to <span class="k">INTEGER</span>,
+  tx_from       <span class="k">TEXT NOT NULL</span>, tx_to <span class="k">TEXT</span>,
+  origin        <span class="k">TEXT NOT NULL</span>,
+  confidence    <span class="k">REAL DEFAULT</span> 1.0
+);
+<span class="k">CREATE INDEX</span> ix_edge_out <span class="k">ON</span> edge(src, rel, tx_to);
+<span class="k">CREATE INDEX</span> ix_edge_in  <span class="k">ON</span> edge(dst, rel, tx_to);  <span class="c">-- ★ 역방향이 핵심</span>
+
+<span class="c">-- 다중 상속</span>
+<span class="k">CREATE TABLE</span> tag        (name <span class="k">TEXT PRIMARY KEY</span>, schema <span class="k">TEXT</span>);
+<span class="k">CREATE TABLE</span> tag_extends(child <span class="k">TEXT</span>, parent <span class="k">TEXT</span>, <span class="k">PRIMARY KEY</span>(child,parent));
+<span class="k">CREATE TABLE</span> node_tag   (node <span class="k">TEXT</span>, tag <span class="k">TEXT</span>, <span class="k">PRIMARY KEY</span>(node,tag));
+<span class="k">CREATE TABLE</span> feature    (node <span class="k">TEXT</span>, name <span class="k">TEXT</span>, data <span class="k">TEXT</span>, <span class="k">PRIMARY KEY</span>(node,name));
+
+<span class="c">-- 가시성 · 근거 · 편집 로그는 spec/schema.sql 참조</span>
+<span class="k">CREATE VIRTUAL TABLE</span> node_fts <span class="k">USING</span> fts5(id, title, aliases, summary, body);
+<span class="k">CREATE VIRTUAL TABLE</span> node_vec <span class="k">USING</span> vec0(id <span class="k">TEXT PRIMARY KEY</span>, emb <span class="k">float</span>[1024]);</code></pre>
+
+<div class="codehead">순회 — 재귀 CTE · “이 소품이 어떤 반전까지 이어지는가”</div>
+<pre><code><span class="k">WITH RECURSIVE</span> reach(id, path, depth) <span class="k">AS</span> (
+  <span class="k">SELECT</span> :start, :start, 0
+  <span class="k">UNION ALL</span>
+  <span class="k">SELECT</span> e.dst, reach.path || <span class="s">' → '</span> || e.dst, reach.depth+1
+  <span class="k">FROM</span> edge e <span class="k">JOIN</span> reach <span class="k">ON</span> e.src = reach.id
+  <span class="k">WHERE</span> reach.depth &lt; :max_depth
+    <span class="k">AND</span> e.tx_to <span class="k">IS NULL</span>                          <span class="c">-- 현재 유효한 간선만</span>
+    <span class="k">AND</span> e.hard = 1                               <span class="c">-- soft 간선은 순회 제외</span>
+    <span class="k">AND</span> (e.story_from <span class="k">IS NULL OR</span> e.story_from &lt;= :as_of)  <span class="c">-- 챕터 컷오프</span>
+    <span class="k">AND</span> instr(reach.path, e.dst) = 0             <span class="c">-- 순환 방지</span>
+)
+<span class="k">SELECT</span> r.path, n.title <span class="k">FROM</span> reach r <span class="k">JOIN</span> node n <span class="k">ON</span> n.id = r.id
+<span class="k">WHERE</span> n.kind <span class="k">IN</span> (<span class="s">'Twist'</span>,<span class="s">'Reveal'</span>) <span class="k">ORDER BY</span> r.depth <span class="k">LIMIT</span> :k;</code></pre>
+
+<div class="note ok">
+  <div class="lbl">규모 감각</div>
+  <p>Codebase-Memory(arXiv:2603.27277)가 <b>210만 노드에서 depth-5 순회를 0.3ms</b>에 처리합니다 — SQL 재귀 CTE만으로. 장편 소설은 <b>10⁴~10⁵ 노드</b>로 세 자릿수 아래입니다. <b>성능은 이 프로젝트의 문제가 아닙니다.</b></p>
+</div>
+
+<h2 id="tools"><span class="num">9</span>MCP 툴 15개</h2>
+<p class="lede">에이전트가 이 그래프를 보는 창입니다. <b>코드 내비게이션이 모델</b>이고, 예산은 25,000 토큰입니다. 기계 판독용 시그니처는 <code>spec/tools.json</code>에 있습니다.</p>
+
+<h3><span class="num">9.1</span>실측 제약</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>제약</th><th>값</th><th>설계에 미치는 영향</th></tr></thead>
+<tbody>
+<tr><td>툴 출력 상한</td><td class="nm">25,000 토큰</td><td>초과 시 디스크에 저장되고 <b>파일 참조로 대체</b>. 전문 반환 금지</td></tr>
+<tr><td>툴 출력 경고선</td><td class="nm">10,000 토큰</td><td>실질 목표는 <b>8,000</b></td></tr>
+<tr><td>툴 설명 절단</td><td class="nm">2 KB</td><td>툴당 설명 예산 ≈ 500 토큰. 핵심을 앞에</td></tr>
+<tr><td>서버 instructions 절단</td><td class="nm">2 KB</td><td>tool search 시 “언제 이 서버를 찾나”의 유일한 통로</td></tr>
+<tr><td>툴 개수 열화 지점</td><td class="nm">30–50개 초과</td><td>목표 <b>15개</b>. 타입별 툴 금지, <code>kind</code> 파라미터로 접기</td></tr>
+<tr><td>MCP 페이지네이션</td><td>*/list 4개에만</td><td><code>tools/call</code>엔 없음 — <b>커서를 직접 구현</b></td></tr>
+<tr><td>세션 상태</td><td class="nm">없음 (2026-07-28)</td><td>서버가 발급한 <b>핸들을 인자로</b> 주고받는 게 표준 패턴</td></tr>
+<tr><td>Roots · Sampling · Logging</td><td>deprecated</td><td>여기에 의존하지 말 것. 로그는 stderr로</td></tr>
+<tr><td>MCP prompts</td><td class="n">Codex 미구현</td><td><b>쓰지 않는다.</b> 진입점은 전부 <code>tools/*</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<figure>
+<div class="fnum">그림 4 — 왜 전문을 반환하면 안 되나</div>
+<svg viewBox="0 0 880 250" role="img" aria-label="같은 질문에 대한 두 응답 방식 비교. 전문을 반환하면 25000 토큰 상한에 걸려 잘리고, 개요와 참조만 반환하면 에이전트가 필요한 하나만 골라 다시 요청한다.">
+  <defs><marker id="d4a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="18" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">질문 · “한도영이 나오는 씬 전부”</text>
+  <text x="20" y="48" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--thread)">✗ 값 반환</text>
+  <rect x="20" y="58" width="392" height="66" rx="8" fill="none" stroke="var(--thread)" stroke-width="1.3"/>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="34" y="78">씬 12개의 <tspan font-weight="600">전문</tspan> — 약 41,000 토큰</text>
+    <text x="34" y="96" fill="var(--thread)">→ 25,000에서 절단, 디스크로 밀림</text>
+    <text x="34" y="114" fill="var(--thread)" opacity=".8">→ 모델은 2KB 프리뷰만 봄. 질문 미해결</text>
+  </g>
+  <text x="466" y="48" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)">✓ 참조 반환</text>
+  <rect x="466" y="58" width="392" height="66" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.3"/>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="480" y="78">씬 12개의 <tspan font-weight="600">주소 + 한 줄 요약</tspan> — 약 340 토큰</text>
+    <text x="480" y="96" fill="var(--moss)">→ 모델이 그중 하나를 고름</text>
+    <text x="480" y="114" fill="var(--moss)" opacity=".8">→ get(ref, include=body) 로 그것만 3,100 토큰</text>
+  </g>
+  <line x1="662" y1="128" x2="662" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#d4a)" opacity=".6"/>
+  <rect x="466" y="156" width="392" height="76" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"/>
+  <text x="480" y="177" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor">합계 3,440 토큰 · 12배 절감</text>
+  <text x="480" y="196" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".75">그리고 모델이 <tspan font-weight="600">무엇을 왜 골랐는지</tspan>가 로그에 남음</text>
+  <text x="480" y="216" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">— 이게 read set이 되고, 도미노 전파의 의존 간선이 됨</text>
+  <rect x="20" y="156" width="392" height="76" rx="8" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity=".45"/>
+  <text x="34" y="177" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">읽은 게 뭔지 알 수 없음 —</text>
+  <text x="34" y="196" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">충돌 판정도, 전파 의존성도 세울 수 없음</text>
+</svg>
+<figcaption>토큰 절감은 부수 효과일 뿐입니다. <b>더 중요한 건 모델이 무엇을 근거로 읽었는지가 기록으로 남는다는 것</b>입니다 — 전문을 통째로 던지면 그 정보가 사라지고, §10의 충돌 판정과 §12의 전파가 둘 다 성립하지 않게 됩니다.</figcaption>
+</figure>
+
+<h3><span class="num">9.2</span>A군 · 탐색</h3>
+<div class="tool"><header><span class="tn">graph_schema</span><span class="ro">read</span><span class="d">온톨로지를 런타임에 introspect</span></header>
+<div class="body"><pre><code>graph_schema(section?: <span class="s">"kinds"|"edges"|"tags"|"rules"</span>) → { kinds[], edges[], tags[], rules[] }</code></pre>
+<p>고정된 15개 툴 표면으로 확장 가능한 스키마를 감당하는 방법입니다. 스키마가 바뀌어도 툴을 다시 만들 필요가 없습니다. <code>ttlMs</code>를 길게 걸어 클라이언트가 캐시하게 합니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">outline</span><span class="ro">read</span><span class="d">개요만 — 본문 없음</span></header>
+<div class="body"><pre><code>outline(scope: ref|<span class="s">"book"</span>, depth: <span class="k">int</span>=1, kind?: <span class="k">string</span>[]) → [{ id, kind, title, summary }]</code></pre>
+<p>Serena의 <code>get_symbols_overview</code> 등가물. <b>본문을 절대 포함하지 않습니다.</b> 에이전트는 항상 여기서 시작해 하나를 고른 뒤 <code>get</code>으로 내려갑니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">find</span><span class="ro">read</span><span class="d">하이브리드 검색 — BM25 + 벡터 + RRF</span></header>
+<div class="body"><pre><code>find(q: <span class="k">string</span>, kind?: <span class="k">string</span>[], tag?: <span class="k">string</span>[], as_of?: <span class="k">int</span>,
+     mode: <span class="s">"lexical"|"semantic"|"hybrid"</span>=<span class="s">"hybrid"</span>, limit: <span class="k">int</span>=20) → [{ id, kind, title, summary, score }]</code></pre>
+<p>BM25를 반드시 병행합니다 — 특성화 연구에서 BM25 단독이 macro 정확도 <b>55.8%</b>로 구조화 시스템들을 앞섰습니다. 공짜 베이스라인을 버릴 이유가 없습니다.</p></div></div>
+
+<h3><span class="num">9.3</span>B군 · 읽기</h3>
+<div class="tool"><header><span class="tn">get</span><span class="ro">read</span><span class="d">노드 상세</span></header>
+<div class="body"><pre><code>get(ref: <span class="k">string</span>|<span class="k">string</span>[], include: <span class="s">"brief"|"full"|"body"</span>=<span class="s">"brief"</span>, as_of?: <span class="k">int</span>) → Node[]</code></pre>
+<p><b><code>include="body"</code>면 depth를 강제로 0으로 낮춥니다.</b> 한 노드의 전문이든 여러 노드의 개요든, 둘을 동시에 주지 않습니다. <code>as_of</code>는 챕터 컷오프 — n+1장 작업 중에 n장 초과 정보가 새는 것을 서버가 막습니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">refs</span><span class="ro">read</span><span class="d">역방향 간선 — 가장 많이 쓰이게 될 툴</span></header>
+<div class="body"><pre><code>refs(ref: <span class="k">string</span>, dir: <span class="s">"in"|"out"|"both"</span>=<span class="s">"in"</span>, rel?: <span class="k">string</span>[],
+     include_soft: <span class="k">bool</span>=<span class="k">false</span>, as_of?: <span class="k">int</span>) → [{ rel, id, title, hard, story_range }]</code></pre>
+<p>“이걸 가리키는 게 뭐냐” — <code>find_referencing_symbols</code> 등가물. <b>역방향 간선을 답할 수 없으면 그래프가 아니라 문서 저장소입니다.</b></p></div></div>
+
+<div class="tool"><header><span class="tn">trace</span><span class="ro">read</span><span class="d">두 노드 사이 경로</span></header>
+<div class="body"><pre><code>trace(from: <span class="k">string</span>, to?: <span class="k">string</span>, via?: <span class="k">string</span>[], max_depth: <span class="k">int</span>=5, k: <span class="k">int</span>=5) → [{ path[], rels[], depth }]</code></pre>
+<p>“이 소품이 이 반전까지 어떻게 이어지나” — 소설에서 <em>가장 흥미로운 질의</em>입니다. <code>to</code>를 비우면 도달 가능한 서사 장치를 거리순으로 반환합니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">neighborhood</span><span class="ro">read</span><span class="d">질의 조건부 이웃 확장 — 0.358 대 0.898을 가른 메커니즘</span></header>
+<div class="body"><pre><code>neighborhood(intent: <span class="k">string</span>, anchors?: <span class="k">string</span>[], as_of?: <span class="k">int</span>,
+             budget_tokens: <span class="k">int</span>=4000) → { packet[], used_tokens, dropped }</code></pre>
+<p>NWM의 검색 파이프라인 그대로 — <b>챕터 컷오프 → BM25+dense를 RRF로 융합해 시드 랭킹 → 각 앵커의 1-hop 타입 이웃 확장 → 예산으로 절단.</b> <code>dropped</code>를 반드시 반환해 무엇이 잘렸는지 모델이 알게 합니다.</p></div></div>
+
+<h3><span class="num">9.4</span>C군 · 진단</h3>
+<div class="tool"><header><span class="tn">check</span><span class="ro">read</span><span class="d">연속성 진단 — 노드 단위로도, 범위로도</span></header>
+<div class="body"><pre><code>check(scope: ref|<span class="s">"book"</span>, rules?: <span class="k">string</span>[], severity?: <span class="s">"error"|"warn"|"info"</span>)
+  → [{ rule, severity, nodes[], evidence[], message }]</code></pre>
+<p>규칙 ID는 ConStory-Bench의 <b>5범주 19서브타입</b>을 그대로 씁니다 — 전체 목록은 <code>spec/rules.json</code>. LSP의 <code>publishDiagnostics</code>처럼 <b>노드에 붙어 있어야</b> 합니다. 배치 리포트가 아니라 편집 중에 걸려야 의미가 있습니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">promises</span><span class="ro">read</span><span class="d">복선 부채 조회</span></header>
+<div class="body"><pre><code>promises(status?: <span class="s">"hypothetical"|"eligible"|"actualized"|"prevented"</span>[],
+         as_of?: <span class="k">int</span>, sort: <span class="s">"debt"|"age"|"s_eff"</span>=<span class="s">"debt"</span>) → [{ id, F, T, P, status, debt, s_eff, delta_coh }]</code></pre>
+<p>전용 툴로 뺀 이유는 이게 제품의 차별점이고, 에이전트가 <b>매 씬을 쓰기 전에 호출해야 하는</b> 툴이기 때문입니다. <code>status="eligible"</code>인 것만 컨텍스트에 주입하는 게 CFPG의 게이트입니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">impact</span><span class="ro">read</span><span class="d">읽기 전용 캐스케이드 프리뷰</span></header>
+<div class="body"><pre><code>impact(ref: <span class="k">string</span>, change: { field, to }, max_depth: <span class="k">int</span>=3)
+  → { affected[], broken_rules[], est_cost_tokens, cycle_detected }</code></pre>
+<p>“이걸 바꾸면 뭐가 깨지나” — LSP의 <code>prepareRename</code>과 codanna의 <code>analyze_impact</code>에 해당. <b>연쇄 편집은 반드시 <code>impact</code> → <code>propose</code> → <code>check</code> 3단으로</b> 흐릅니다.</p></div></div>
+
+<h3><span class="num">9.5</span>D군 · 쓰기</h3>
+<div class="tool"><header><span class="tn">propose</span><span class="rw">write</span><span class="d">변경 제안 — 원자적</span></header>
+<div class="body"><pre><code>propose(ops: Op[], read_set: [{ node, rev }], rationale: <span class="k">string</span>, session_id: <span class="k">string</span>)
+  → { proposal_id, status: <span class="s">"auto_accepted"|"queued"|"conflict"</span>,
+      conflicts?[], pending_overlap?[] }
+
+Op = { verb: <span class="s">"ADD"|"UPDATE"|"INVALIDATE"|"LINK"|"UNLINK"</span>,
+       target, field?, from?, to?, basis_rev? }</code></pre>
+<p><b><code>read_set</code>이 이 설계 전체에서 가장 값어치 있는 한 필드입니다</b> — 충돌 판정 기준, 프로버넌스 증거, 도미노 전파 의존 간선이 전부 여기서 나옵니다. <code>from</code>을 요구하는 이유는 조건부 op를 만들기 위해서입니다. <code>to</code>만 있는 op는 last-writer-wins 지뢰입니다. <b>빈 <code>read_set</code>은 거부합니다.</b></p></div></div>
+
+<div class="tool"><header><span class="tn">commit</span><span class="rw">write</span><span class="d">제안 확정</span></header>
+<div class="body"><pre><code>commit(proposal_id: <span class="k">string</span>, mode: <span class="s">"apply"|"dry_run"</span>=<span class="s">"apply"</span>)
+  → { applied[], rejected[], cascade_id?, diagnostics[] }</code></pre>
+<p>정책을 통과한 제안만 자동 적용됩니다(§10.4). 나머지는 <code>queued</code>로 남아 사람의 검수 큐로 갑니다. 커밋 직후 영향받은 부분그래프에만 <code>check</code>를 재실행합니다.</p></div></div>
+
+<div class="tool"><header><span class="tn">ingest</span><span class="rw">write</span><span class="d">원고 → 그래프 증분 추출</span></header>
+<div class="body"><pre><code>ingest(chapter: <span class="k">string</span>, mode: <span class="s">"extract"|"reindex"</span>=<span class="s">"extract"</span>)
+  → { proposal_id, extracted: { nodes, edges, facts }, invalidated[] }</code></pre>
+<p>NWM의 Publish 흐름 — <b>확정된 산문만 기록하고, 챕터를 수정 재발행하면 그 지점 이후의 파생 간선을 무효화</b>합니다. 추출 결과도 제안으로 들어옵니다. <b>자동 커밋하지 않습니다.</b></p></div></div>
+
+<div class="tool"><header><span class="tn">lease</span><span class="rw">write</span><span class="d">작업 구역 선점 — 다중 에이전트에서만 필요</span></header>
+<div class="body"><pre><code>lease(mode: <span class="s">"acquire"|"release"|"list"</span>, scope?: <span class="k">string</span>,
+      ttl_sec?: <span class="k">int</span>=900, session_id: <span class="k">string</span>, note?: <span class="k">string</span>)
+  → { lease_id, scope, holder, expires_at, conflicts?[] }</code></pre>
+<p>스위칭(번갈아 사용) 운용에서는 필요 없습니다. 두 에이전트를 <b>동시에</b> 붙일 때만 씁니다. TTL이 필수인 이유는 세션이 죽어도 자동 해제되어야 하기 때문입니다. 리스는 <b>권고이지 잠금이 아닙니다</b>.</p></div></div>
+
+<div class="tool"><header><span class="tn">query</span><span class="ro">read</span><span class="d">탈출 해치 — 읽기 전용 SQL</span></header>
+<div class="body"><pre><code>query(sql: <span class="k">string</span>, params?: <span class="k">object</span>, limit: <span class="k">int</span>=200) → { columns[], rows[][], truncated }</code></pre>
+<p>codebase-memory에서 <b>가장 많이 쓰이는 툴</b>이 14개 편의 툴이 아니라 이 raw 질의였습니다. 에이전트는 질의를 잘 씁니다 — 모든 걸 손으로 빚은 툴로 강제하지 마세요. 읽기 전용 커넥션으로 열고, <code>graph_schema</code>가 스키마를 알려주므로 모델이 스스로 질의를 만들 수 있습니다.</p></div></div>
+
+<h3><span class="num">9.6</span>응답 예산과 우아한 강등</h3>
+<p>모든 읽기 툴은 <code>response_format: "concise" | "detailed"</code>와 <code>max_chars</code>를 받습니다. 초과 시 하드 절단이 아니라 <b>단계적 강등</b>입니다.</p>
+<pre><code>전문 (본문 포함)
+   ↓ 예산 초과
+개요 (id + kind + title + summary 1줄)
+   ↓ 여전히 초과
+주소 맵 ({ kind: [id, …] })
+   ↓ 여전히 초과
+타입별 개수 + <span class="t">"다음에 무엇을 하라"는 안내 문장</span></code></pre>
+<p>마지막 단계의 안내 문장이 중요합니다 — 절단당한 모델에게 <b>다음 행동을 지시</b>해줍니다. “결과가 너무 넓습니다. <code>kind</code>로 좁히거나 <code>as_of</code>를 지정하세요.”</p>
+
+<h3><span class="num">9.7</span>코드 내비게이션 대응표</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>LSP / Serena</th><th>코드에서의 의미</th><th>이 시스템</th><th>소설에서의 의미</th></tr></thead>
+<tbody>
+<tr><td><code>documentSymbol</code></td><td>파일 개요</td><td><code>outline</code></td><td>챕터의 요소 목록</td></tr>
+<tr><td><code>workspace/symbol</code></td><td>전역 심볼 검색</td><td><code>find</code></td><td>이름·별칭으로 인물/소품 찾기</td></tr>
+<tr><td><code>hover</code></td><td>시그니처만, 본문 없음</td><td><code>get(include="brief")</code></td><td><b>가장 싼 유용한 읽기</b></td></tr>
+<tr><td><code>definition</code></td><td>선언 위치</td><td><code>get(include="body")</code></td><td>이 요소가 확립된 씬</td></tr>
+<tr><td><code>references</code></td><td>모든 사용처</td><td><code>refs</code></td><td>이 요소를 건드리는 모든 씬</td></tr>
+<tr><td><code>implementation</code></td><td>인터페이스 구현체</td><td><code>refs(rel=["extends"])</code></td><td>이 규칙을 따르는 하위 요소</td></tr>
+<tr><td><code>callHierarchy</code></td><td>호출 체인</td><td><code>trace</code></td><td>설정 → 트리거 → 회수 체인</td></tr>
+<tr><td><code>publishDiagnostics</code></td><td>에러 표시</td><td><code>check</code></td><td>연속성 위반, 미회수 복선</td></tr>
+<tr><td><code>prepareRename</code></td><td>연쇄 가능성 사전 판정</td><td><code>impact</code></td><td>이걸 바꾸면 뭐가 깨지나</td></tr>
+<tr><td><code>rename</code> → WorkspaceEdit</td><td><b>원자적 다중 파일 변경</b></td><td><code>propose</code> + <code>commit</code></td><td>40개 씬을 건드리는 변경도 한 트랜잭션</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3><span class="num">9.8</span>보안과 운영</h3>
+<ul>
+  <li><b>stdio 전용.</b> confused deputy, 토큰 패스스루, SSRF, 상태 핸들 탈취, OAuth URL 검증 — MCP 스펙 보안 절의 다섯 공격군이 전부 HTTP 전용이라 통째로 사라집니다.</li>
+  <li><b><code>readOnlyHint</code>를 게이트로 신뢰하지 마세요.</b> MCP 공식 블로그가 명시합니다 — “클라이언트는 힌트를 신뢰하지 않아야 한다. 신뢰할 수 없는 서버는 <code>readOnlyHint: true</code>라고 주장하고도 파일을 지울 수 있다.” <b>게이트는 서버 툴 구현부에 둡니다.</b></li>
+  <li><b>입력 검증과 rate limit은 스펙의 MUST입니다.</b> 경로 탈출 차단, 호출 빈도 제한 — 폭주하는 에이전트의 그래프 순회는 실제 실패 모드입니다.</li>
+  <li><b><code>execute_shell_command</code> 류는 만들지 않습니다.</b> 소설 설정집이 셸을 소유할 이유가 없습니다.</li>
+  <li><b>로컬 stdio는 기본적으로 신 리비전으로 협상되지 않습니다.</b> 신 리비전 전용 기능을 필수 경로에 두지 말고 SDK 호환 계층에 맡기세요. 대신 공짜인 건 지금 지킵니다 — <code>tools/list</code> 결정적 정렬(프롬프트 캐시 적중률), 세션 중 툴 목록 불변.</li>
+</ul>
+
+<h2 id="ops"><span class="num">10</span>버전 관리 — op 로그와 충돌 판정</h2>
+<p class="lede">사람과 에이전트가 같은 그래프를 쓰는 문제. 결론부터 — <b>CRDT를 쓰지 않습니다.</b></p>
+
+<h3><span class="num">10.1</span>왜 CRDT를 쓰지 않는가</h3>
+<div class="grid2">
+<div class="card"><div class="m">이유 1</div><h5>동시성이 작고 비대칭적이다</h5>
+  <p>사람 1명 + 에이전트 1개(스위칭이면 사실상 1개)입니다. 커서 50개짜리 문서가 아닙니다. CRDT의 고전적 이득(오프라인 P2P, 서버 없음, 다수 피어)이 하나도 해당하지 않습니다. Linear도 대부분 last-write-wins를 쓰고 CRDT는 이슈 설명에만 씁니다.</p></div>
+<div class="card"><div class="m">이유 2 · 더 중요</div><h5>자동 수렴이 잘못된 의미론이다</h5>
+  <p>CRDT의 일은 <b>조용히 수렴</b>하는 것입니다. 이 시스템의 일은 종종 그 반대 — 사람이 “9장에서 카엘이 죽는다”고 했는데 에이전트가 “14장에 카엘이 등장한다”고 했으면 <b>고르지 말고 드러내야</b> 합니다. CRDT는 수렴을 주지 정합성을 주지 않습니다.</p></div>
+<div class="card"><div class="m">이유 3</div><h5>프로버넌스가 더 어려워진다</h5>
+  <p>문자 단위 CRDT 메타데이터는 “에이전트가 세션 S에서 이 필드 변경을 제안했다”와 다릅니다. 결국 프로버넌스 로그를 <b>그 위에 또</b> 만들게 됩니다.</p></div>
+<div class="card"><div class="m">언제 쓰나</div><h5>노드 안 장문 텍스트에만, 나중에</h5>
+  <p>인물 소개나 씬 설명처럼 <b>사람이 타이핑하는 동안 에이전트가 같은 문단을 고쳐 쓰는</b> 곳이 CRDT가 값어치를 하는 유일한 자리입니다. Yjs + ProseMirror가 성숙한 경로입니다.</p></div>
+</div>
+
+<div class="note warn">
+  <div class="lbl">라이브러리 현황 (2026-08 확인)</div>
+  <p><b>Yjs 14</b>가 예고한 “changesets + attributions”는 정확히 이 시스템의 요구사항이지만 <b>2025-12부터 beta에 머물러 있고 stable은 13.6.32</b>이며 같은 릴리스에서 <code>move</code>가 제거됐습니다. <b>Loro 1.14.x</b>는 Kleppmann의 검증된 move 알고리즘 기반 Tree/MovableList를 가진 유일한 선택지지만 생태계가 얇습니다. 리스트 순서 문제는 지금은 <b>fractional indexing</b>으로 해결하세요 — 라이브러리와 무관하고 오늘 동작합니다.</p>
+</div>
+
+<h3><span class="num">10.2</span>op는 의도 단위로</h3>
+<pre><code><span class="k">Op</span> {
+  verb       <span class="s">"UPDATE"</span>
+  target     <span class="s">"character/한도영"</span>
+  field      <span class="s">"주손"</span>
+  from       <span class="s">"왼손"</span>          <span class="t">← from이 있어야 조건부 op가 됨</span>
+  to         <span class="s">"오른손"</span>
+  basis_rev  7                <span class="t">← 이 리비전을 보고 결정했다</span>
+  idem_key   <span class="s">"a7f2-op-03"</span>    <span class="c">// MCP 재시도 중복 방지</span>
+}
+
+<span class="k">Proposal</span> {
+  ops        [ … ]
+  read_set   [ { <span class="s">"character/한도영"</span>, rev: 7 },     <span class="t">★ 이 한 필드가</span>
+               { <span class="s">"scene/A3.C22.S01"</span>, rev: 2 } ]   <span class="t">  세 문제를 동시에 푼다</span>
+  rationale  <span class="s">"22장 초고에 오른손 묘사가 있음"</span>
+  actor      { kind: <span class="s">"agent"</span>, model: <span class="s">"claude-opus"</span>, session: <span class="s">"a7f2"</span> }
+}</code></pre>
+
+<div class="key">
+  <div class="lbl">read_set이 푸는 세 문제</div>
+  <p><b>① 충돌 판정</b> — “내가 읽은 것 중 바뀐 게 있나”가 곧 충돌 술어입니다. <b>② 프로버넌스</b> — 이 변경의 근거가 무엇이었는지가 증거로 남습니다. <b>③ 전파 의존성</b> — §12의 도미노 엔진이 필요로 하는 의존 간선이 바로 이것입니다. <b>세 개를 따로 만들 필요가 없습니다.</b></p>
+</div>
+
+<h3><span class="num">10.3</span>충돌 판정 흐름</h3>
+<figure>
+<div class="fnum">그림 5 — 제안에서 커밋까지</div>
+<svg viewBox="0 0 880 320" role="img" aria-label="제안이 도착하면 read set의 각 노드 리비전을 현재 리비전과 비교한다. 전부 일치하면 필드 단위로 검사해 겹치지 않으면 적용하고, 리비전이 다르면 사람의 확정을 덮어쓰지 않고 보류한다.">
+  <defs><marker id="d5a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="20" y="20" width="164" height="44" rx="8" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="102" y="40" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--thread)">제안 도착</text>
+  <text x="102" y="56" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--thread)" opacity=".85">ops + read_set</text>
+  <line x1="184" y1="42" x2="236" y2="42" stroke="currentColor" stroke-width="1.3" marker-end="url(#d5a)"/>
+  <rect x="240" y="14" width="220" height="56" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"/>
+  <text x="350" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">read_set 리비전 대조</text>
+  <text x="350" y="55" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".7">∀ n ∈ read_set : n.rev == current(n).rev ?</text>
+  <path d="M460 32 L530 32" stroke="var(--moss)" stroke-width="1.5" marker-end="url(#d5a)" color="var(--moss)"/>
+  <text x="495" y="24" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--moss)" font-weight="600">일치</text>
+  <rect x="534" y="10" width="200" height="44" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.3"/>
+  <text x="634" y="30" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12" fill="var(--moss)">필드 단위 검사</text>
+  <text x="634" y="46" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--moss)" opacity=".85">같은 필드를 다른 값으로? → 충돌</text>
+  <path d="M350 70 L350 108" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#d5a)" color="var(--brass)"/>
+  <text x="360" y="92" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)" font-weight="600">불일치</text>
+  <rect x="240" y="112" width="220" height="60" rx="8" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.3"/>
+  <text x="350" y="134" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--brass)">보류 · 사람에게</text>
+  <text x="350" y="152" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="var(--brass)">근거가 낡음 — 절대 덮어쓰지 않음</text>
+  <text x="350" y="166" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--brass)" opacity=".8">현재 값 + 변경 이력을 함께 보여줌</text>
+  <path d="M634 54 L634 92" stroke="currentColor" stroke-width="1.3" marker-end="url(#d5a)"/>
+  <rect x="510" y="96" width="248" height="76" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"/>
+  <text x="634" y="117" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">위험 등급 정책</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor">
+    <text x="524" y="136"><tspan fill="var(--moss)">자동</tspan>  고립 노드 신규 · 빈 필드 채우기</text>
+    <text x="524" y="152"><tspan fill="var(--brass)">검수</tspan>  기존 필드 변경 · 간선 삭제</text>
+    <text x="524" y="168"><tspan fill="var(--thread)">항상</tspan>  locked 노드 · canon 규칙 · 40+ 연쇄</text>
+  </g>
+  <path d="M634 172 L634 206" stroke="var(--moss)" stroke-width="1.5" marker-end="url(#d5a)" color="var(--moss)"/>
+  <rect x="510" y="210" width="248" height="48" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.4"/>
+  <text x="634" y="230" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--moss)">커밋 — 단일 트랜잭션</text>
+  <text x="634" y="248" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--moss)" opacity=".85">부분 적용 금지 · rev++ · cid 재계산</text>
+  <path d="M634 258 L634 288" stroke="currentColor" stroke-width="1.3" marker-end="url(#d5a)"/>
+  <rect x="470" y="292" width="288" height="26" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/>
+  <text x="614" y="309" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".8">영향 부분그래프에만 check() 재실행 → 도미노(§12)</text>
+  <rect x="20" y="210" width="420" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="4 4" opacity=".5"/>
+  <text x="36" y="232" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".7">삭제는 없다</text>
+  <text x="36" y="252" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".7">INVALIDATE는 tx_to를 닫을 뿐 — 패배한 버전은</text>
+  <text x="36" y="270" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".7">누가·언제·왜 밀어냈는지와 함께 영구 조회 가능</text>
+</svg>
+<figcaption>Dolt의 셀 단위 3-way merge 규칙을 그대로 씁니다 — 안정적 ID로 행을 맞추고, 양쪽이 <em>다른</em> 필드를 바꿨으면 둘 다 적용, <b>같은 필드를 다른 값으로 바꿨을 때만 충돌</b>. 그 위 계층(“이 두 노드가 서사적으로 모순된다”)은 머지 문제가 아니라 <b>검증 문제</b>라서 §12의 진단 규칙이 담당합니다.</figcaption>
+</figure>
+
+<h3><span class="num">10.4</span>위험 등급 정책</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>등급</th><th>조건</th><th>처리</th></tr></thead>
+<tbody>
+<tr><td><span class="pill sub">자동</span></td><td>들어오는 참조가 없는 신규 노드 추가 · null 필드 채우기 · <code>mentioned_in</code>(soft) 간선 추가</td><td>즉시 적용, 로그에만 남김</td></tr>
+<tr><td><span class="pill w">검수</span></td><td>기존 필드 값 변경 · hard 간선 삭제 · Promise 상태 전이 · 3~40개 노드 연쇄</td><td>큐에 쌓고 사람에게</td></tr>
+<tr><td><span class="pill dev">항상</span></td><td><code>locked</code> 노드 · Rule(canon) 수정 · 40개 초과 연쇄 · <code>contradicts</code> 간선 생성</td><td>사람 승인 없이는 절대 적용 안 함</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="prov"><span class="num">11</span>프로버넌스 — PROV-O 어휘만</h2>
+<p>RDF 전체는 과합니다. W3C PROV-O의 <b>어휘만</b> 빌려 관계형으로 저장합니다 — 여섯 개 술어면 충분합니다.</p>
+<pre><code>NodeVersion  <span class="k">is a</span>  prov:Entity
+EditSession  <span class="k">is a</span>  prov:Activity
+human, model <span class="k">are</span>   prov:Agent
+
+nodeVersion  wasGeneratedBy    editSession
+nodeVersion  wasDerivedFrom    priorNodeVersion   <span class="c">// prov:Revision</span>
+editSession  wasAssociatedWith modelAgent
+modelAgent   actedOnBehalfOf   humanAgent         <span class="t">← LLM은 사람을 대리한다</span>
+nodeVersion  wasAttributedTo   humanAgent | modelAgent
+editSession  used              readSetEntity[]</code></pre>
+
+<div class="note warn">
+  <div class="lbl">위키데이터의 실수를 반복하지 마세요</div>
+  <p>세계 최대 협업 지식 그래프가 <b>문서 단위 리비전만 있고 statement 단위 프로버넌스가 없습니다.</b> “누가 이 진술을 언제 추가했나”를 알려면 버전 이력을 크롤링해 리비전을 비교해야 하고, 이걸 고치자는 티켓(T136799)이 <b>10년째</b> 열려 있습니다. <b>필드 단위 프로버넌스는 처음부터 넣어야 합니다.</b></p>
+</div>
+
+<h2 id="cascade"><span class="num">12</span>도미노 전파</h2>
+<p class="lede">노드가 바뀌면 의존 노드가 연쇄로 갱신되는 기능. 결론부터 — <b>v1에서는 LLM을 빼고 만듭니다.</b></p>
+
+<figure>
+<div class="fnum">그림 6 — 2단 전파 엔진</div>
+<svg viewBox="0 0 880 380" role="img" aria-label="변경이 커밋되면 read set 역방향으로 의존 노드를 dirty로 표시하고, 먼저 결정론 규칙으로 검사한다. 규칙이 플래그한 노드만 LLM 재도출로 넘어가며, 재도출 결과가 정규화 비교에서 같으면 전파가 그 자리에서 멈춘다.">
+  <defs><marker id="d6a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="20" y="18" width="150" height="42" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="95" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">커밋</text>
+  <text x="95" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">한도영.주손 변경</text>
+  <line x1="170" y1="39" x2="216" y2="39" stroke="currentColor" stroke-width="1.3" marker-end="url(#d6a)"/>
+  <rect x="220" y="18" width="180" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  <text x="310" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" fill="currentColor">역 read_set 조회</text>
+  <text x="310" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">이 노드를 읽고 쓴 제안들</text>
+  <line x1="400" y1="39" x2="446" y2="39" stroke="currentColor" stroke-width="1.3" marker-end="url(#d6a)"/>
+  <rect x="450" y="18" width="180" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  <text x="540" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" fill="currentColor">전이적 dirty 마킹</text>
+  <text x="540" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">위상 정렬 · 순환 감지</text>
+  <line x1="540" y1="60" x2="540" y2="92" stroke="currentColor" stroke-width="1.3" marker-end="url(#d6a)"/>
+  <rect x="140" y="96" width="600" height="86" rx="10" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.5"/>
+  <text x="160" y="118" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--indigo)" letter-spacing="1">TIER 1 · 결정론 — LLM 호출 0회</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="var(--indigo)" text-anchor="middle">
+    <rect x="160" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="225" y="145">참조 무결성</text><text x="225" y="159" font-size="9.5" opacity=".75">고아 간선 검출</text>
+    <rect x="298" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="363" y="145">DAG 불변식</text><text x="363" y="159" font-size="9.5" opacity=".75">인과 순환 금지</text>
+    <rect x="436" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="501" y="145">시간 구간</text><text x="501" y="159" font-size="9.5" opacity=".75">겹침 · 사후 등장</text>
+    <rect x="574" y="128" width="146" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="647" y="145">가시성 · 복선</text><text x="647" y="159" font-size="9.5" opacity=".75">V 위반 · 미회수</text>
+  </g>
+  <line x1="440" y1="182" x2="440" y2="212" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#d6a)" color="var(--brass)"/>
+  <text x="450" y="202" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">플래그된 노드만</text>
+  <rect x="140" y="216" width="600" height="76" rx="10" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="160" y="238" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--brass)" letter-spacing="1">TIER 2 · LLM 재도출 — P6에서 추가</text>
+  <text x="160" y="258" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--brass)">항상 <tspan font-weight="600">원본 인간 작성 노드 + 바뀐 사실</tspan>에서 재도출. 직전 도출 결과를 다시 입력으로 넣지 않음.</text>
+  <text x="160" y="278" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--brass)" opacity=".9">홉 ≤ 2~3 · 토큰·노드 예산 · 초과 시 fail-closed</text>
+  <line x1="440" y1="292" x2="440" y2="316" stroke="currentColor" stroke-width="1.3" marker-end="url(#d6a)"/>
+  <rect x="212" y="320" width="456" height="46" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.6"/>
+  <text x="440" y="340" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="700" fill="var(--thread)">EARLY CUTOFF — 정규화 구조 투영으로 비교</text>
+  <text x="440" y="358" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="var(--thread)">값이 같으면 의존 노드를 dirty로 만들지 않는다. <tspan font-weight="600">이게 없으면 절대 안 멈춘다.</tspan></text>
+  <path d="M212 343 Q 100 343 100 200 Q 100 60 166 39" stroke="var(--thread)" stroke-width="1.3" fill="none" stroke-dasharray="4 3" opacity=".55"/>
+  <text x="60" y="200" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--thread)" opacity=".7" transform="rotate(-90 60 200)">변경 있으면 다음 홉</text>
+</svg>
+<figcaption><b>Salsa(rust-analyzer)의 red-green backdating과 Buck2 DICE의 값 비교 스킵</b>이 근거입니다. LLM은 같은 입력에도 문자열이 매번 다르므로, 원문 텍스트로 비교하면 전파가 영원히 멈추지 않습니다 — 반드시 <b>타입 필드로 정규화 투영</b>한 뒤 비교해야 합니다.</figcaption>
+</figure>
+
+<h3><span class="num">12.1</span>Tier 1 규칙 — 19개 중 17개가 LLM 없이</h3>
+<p>규칙 ID는 ConStory-Bench의 19개 서브타입을 따릅니다. 전체 정의는 <code>spec/rules.json</code>이고, 아래는 대표 항목입니다.</p>
+<div class="tbl">
+<table>
+<thead><tr><th>범주</th><th>규칙</th><th>질의</th><th>LLM</th></tr></thead>
+<tbody>
+<tr><td rowspan="4">시간·플롯</td><td><code>timeline.absolute</code></td><td>같은 사건에 서로 다른 절대 시각이 붙은 노드 쌍</td><td class="y">불필요</td></tr>
+<tr><td><code>timeline.simultaneity</code></td><td>한 인물이 겹치는 <code>story</code> 구간에 두 장소에 <code>present_at</code></td><td class="y">불필요</td></tr>
+<tr><td><code>plot.causeless</code></td><td><code>causes</code> 들어오는 간선 0개인 결과 사건</td><td class="y">불필요</td></tr>
+<tr><td><code>plot.abandoned</code></td><td>끝까지 <code>hypothetical</code>인 Promise · 도달 불가 사건</td><td class="y">불필요</td></tr>
+<tr><td rowspan="2">인물</td><td><code>character.knowledge</code></td><td><code>c ∉ visible_to(f)</code>인데 c가 f를 발화한 씬</td><td class="y">불필요</td></tr>
+<tr><td><code>character.memory</code></td><td>인지 시점 이전 사실을 참조하는 발화</td><td class="y">불필요</td></tr>
+<tr><td>세계관</td><td><code>world.core_rule</code></td><td>씬의 <code>post</code>가 <code>locked</code> Rule의 술어를 위반</td><td class="y">불필요</td></tr>
+<tr><td rowspan="2">사실·세부</td><td><code>detail.nomenclature</code></td><td>같은 실체를 가리키는 미등록 별칭</td><td class="y">불필요</td></tr>
+<tr><td><code>detail.appearance</code></td><td>같은 속성 필드의 구간 겹침 + 값 불일치</td><td class="y">불필요</td></tr>
+<tr><td>서술</td><td><code>narrative.perspective</code></td><td>초점화자가 없거나 씬 안에서 바뀜</td><td class="y">불필요</td></tr>
+<tr><td rowspan="2">복선</td><td><code>promise.unearned</code></td><td>트리거 없이 <code>pays_off</code>가 걸린 Promise</td><td class="y">불필요</td></tr>
+<tr><td><code>promise.premature</code></td><td><code>pays_off</code> 씬이 트리거보다 앞섬</td><td class="y">불필요</td></tr>
+<tr><td>문체</td><td><code>style.drift</code></td><td>챕터별 문체 지표 분산 &gt; 임계</td><td class="n">통계 필요</td></tr>
+<tr><td>서사 논리</td><td><code>plot.contradiction</code></td><td>구조로 안 잡히는 의미적 모순</td><td class="n">LLM · Tier 2</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key">
+  <div class="lbl">이게 v1에서 LLM을 빼는 이유입니다</div>
+  <p>토큰도 안 들고, 결과가 항상 같고, 밀리초 단위로 돕니다. 남은 두 개는 정말로 의미 판단이 필요한 것이고, <b>그때가 되면 Tier 1이 이미 후보를 좁혀둔 상태</b>입니다.</p>
+</div>
+
+<h3><span class="num">12.2</span>실패 모드와 대응</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>위험</th><th>실제로 일어나는 일</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>무한 전파</td><td>순환 의존이 있는 그래프에서 파동이 안 멈춤</td><td>Excel 모델 — 기본 거부, 명시적 옵트인 시 반복 제한. <code>(node, rev)</code> 방문 집합</td></tr>
+<tr><td><b>비수렴 · 진동</b></td><td>LLM이 의미는 같고 문자열만 다른 결과를 내며 영원히 dirty 전파</td><td><b>early cutoff</b> — 정규화 구조 투영으로 비교. 이것 없이는 원리적으로 안 멈춤</td></tr>
+<tr><td>평범화 침식</td><td>3홉 연쇄에서 환각은 오히려 줄지만(0.422→0.272) <b>사실 정확도도 함께 떨어짐</b>(0.789→0.769)</td><td>항상 원본에서 재도출. 홉 수 ≤2~3. UI에 홉 수 표시</td></tr>
+<tr><td>비용 폭발</td><td>한 번의 변경이 40개 노드에 LLM을 부름</td><td>Tier 1이 먼저 걸러냄. <code>locked</code> canon 노드는 재검증 자체를 건너뜀</td></tr>
+<tr><td>조용한 정본 훼손</td><td>캐스케이드가 사람 모르게 canon을 바꿈</td><td><b>캐스케이드는 무엇도 자동 커밋하지 않습니다.</b> 항상 제안을 발행</td></tr>
+<tr><td>검수 피로</td><td>제안이 쌓여 사람이 다 무시</td><td>위험 등급별 자동 승인 + <b>인라인 앰비언트 표시</b> + 묶음 큐. 모달 승인 다이얼로그는 피할 것</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <div class="lbl">파급 효과는 거리에 따라 줄지만 0이 되지 않습니다</div>
+  <p>RippleBench(352,961개 질문, 999개 의미 거리 단계)가 측정한 바로는 <b>모든 방법이 의미적으로 먼 주제에서도 비자명한 정확도 하락을 보였습니다.</b> “알아서 수렴하겠지”는 성립하지 않습니다 — <b>전파 깊이는 정책으로 잘라야 합니다.</b></p>
+</div>
+
+<h2 id="hosts"><span class="num">13</span>다중 호스트 — 한 벌로 양쪽</h2>
+<p class="lede">Claude Code와 Codex를 <b>번갈아 쓰는</b> 운용을 전제합니다. 동시 접속이 아니므로 동시성 제어는 필요 없고, 대신 조건이 하나 생깁니다.</p>
+
+<h3><span class="num">13.1</span>패키지 구조</h3>
+<p>원칙은 하나입니다. <b>이식 가능한 것을 코어로, 호스트에 묶이는 것은 얇은 어댑터로.</b> 그리고 어댑터를 추상화하려 들지 마세요 — 각 50줄 남짓이고, 중복이 잘못된 추상화보다 쌉니다.</p>
+
+<figure>
+<div class="fnum">그림 7 — 듀얼 매니페스트 패키지</div>
+<svg viewBox="0 0 900 400" role="img" aria-label="패키지 파일 트리와 각 파일을 어느 호스트가 읽는지. 가운데 코어 파일들은 양쪽이 모두 읽고, 훅 파일 두 개만 각 호스트 전용이다.">
+  <defs><marker id="d7a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="20" width="180" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="114" y="41" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">Claude Code</text>
+  <text x="114" y="58" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".6">TS · 비공개</text>
+  <rect x="696" y="20" width="180" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="786" y="41" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">Codex CLI</text>
+  <text x="786" y="58" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".6">Rust · Apache-2.0</text>
+  <rect x="248" y="92" width="404" height="196" rx="11" fill="var(--surface-2)" stroke="var(--moss)" stroke-width="1.8"/>
+  <text x="450" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">이식 가능 코어 — 양쪽이 그대로 읽음</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="11.5" fill="currentColor">
+    <rect x="268" y="128" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="146">plugin.json <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— agent-plugins 스키마, 루트</tspan></text>
+    <rect x="268" y="160" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="178">.mcp.json <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— storyai MCP 서버 선언</tspan></text>
+    <rect x="268" y="192" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="210">skills/*/SKILL.md <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— 규격 6필드만</tspan></text>
+    <rect x="268" y="224" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="242">AGENTS.md <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— 작품 규칙 · 인계 프로토콜</tspan></text>
+    <rect x="268" y="256" width="364" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".4" stroke-dasharray="3 3"/>
+    <text x="282" y="273" opacity=".65">manuscript/ · bible/ · store/story.db</text>
+  </g>
+  <rect x="24" y="128" width="196" height="82" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="122" y="149" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="var(--indigo)">CC 어댑터</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--indigo)">
+    <text x="40" y="169">.claude-plugin/plugin.json</text>
+    <text x="40" y="186">hooks/claude.hooks.json</text>
+    <text x="40" y="203">.lsp.json <tspan font-size="9" opacity=".7">(P4+, CC 전용)</tspan></text>
+  </g>
+  <rect x="680" y="128" width="196" height="82" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.4"/>
+  <text x="778" y="149" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="var(--brass)">Codex 어댑터</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--brass)">
+    <text x="696" y="169">hooks/codex.hooks.json</text>
+    <text x="696" y="186">.codex/config.toml</text>
+    <text x="696" y="203">.rules <tspan font-size="9" opacity=".7">(execpolicy, 선택)</tspan></text>
+  </g>
+  <line x1="114" y1="66" x2="114" y2="124" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#d7a)" color="var(--indigo)"/>
+  <line x1="786" y1="66" x2="786" y2="124" stroke="var(--brass)" stroke-width="1.3" marker-end="url(#d7a)" color="var(--brass)"/>
+  <path d="M220 169 L244 169" stroke="var(--moss)" stroke-width="1.4" marker-end="url(#d7a)" color="var(--moss)"/>
+  <path d="M676 169 L656 169" stroke="var(--moss)" stroke-width="1.4" marker-end="url(#d7a)" color="var(--moss)"/>
+  <rect x="24" y="308" width="852" height="76" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.4"/>
+  <text x="44" y="330" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="700" fill="var(--thread)">듀얼 매니페스트가 성립하는 이유</text>
+  <text x="44" y="351" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">Codex: DISCOVERABLE_PLUGIN_MANIFEST_PATHS = [ ".codex-plugin/…" , ".claude-plugin/plugin.json" , ".cursor-plugin/…" ]</text>
+  <text x="44" y="371" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)">Codex는 루트 <tspan font-family="IBM Plex Mono,monospace">plugin.json</tspan>을 먼저 보고, 없으면 위 경로로 폴백합니다. Claude Code는 인식 못 하는 최상위 필드를 무시합니다. <tspan font-weight="600">그래서 둘 다 놓아두면 됩니다.</tspan></text>
+</svg>
+<figcaption>호스트에 묶이는 건 <b>훅과 에디터 통합 두 가지뿐</b>입니다. 나머지는 전부 코어에 들어갑니다. 훅 파일 두 개가 각자 <b>같은 스크립트를 호출</b>하게 하고, 규칙 자체는 <code>server/core/</code>에 한 번만 존재하게 하세요. 규칙 로직이 훅 JSON에 들어가는 순간 두 호스트의 동작이 갈립니다.</figcaption>
+</figure>
+
+<div class="tbl">
+<table>
+<thead><tr><th>파일</th><th>Claude Code</th><th>Codex</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td><code>plugin.json</code> (루트)</td><td>무시</td><td class="y">우선 인식</td><td>agent-plugins v1.0.0 스키마</td></tr>
+<tr><td><code>.claude-plugin/plugin.json</code></td><td class="y">읽음</td><td class="y">폴백으로 읽음</td><td>내용은 동일하게 유지</td></tr>
+<tr><td><code>.mcp.json</code></td><td class="y">읽음</td><td class="y">플러그인 <code>mcpServers</code> 경유</td><td>stdio 고정</td></tr>
+<tr><td><code>skills/*/SKILL.md</code></td><td class="y">읽음</td><td class="y">읽음</td><td><b>규격 6필드만</b>. 호스트 확장 금지</td></tr>
+<tr><td><code>AGENTS.md</code></td><td class="y">읽음</td><td class="y">읽음</td><td>단일 소스. 32 KiB 상한(Codex)</td></tr>
+<tr><td><code>CLAUDE.md</code></td><td class="y">읽음</td><td>마이그레이션 도구 경유만</td><td><b>한 줄짜리 포인터로만</b></td></tr>
+<tr><td><code>hooks/claude.hooks.json</code></td><td class="y">읽음</td><td>—</td><td rowspan="2">유일한 진짜 중복</td></tr>
+<tr><td><code>hooks/codex.hooks.json</code></td><td>—</td><td class="y">읽음</td></tr>
+<tr><td><code>.lsp.json</code></td><td class="y">읽음</td><td>없음</td><td>P4+ 선택. 진단을 에디터에 띄우려면</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3><span class="num">13.2</span>스위칭이 성립하는 조건</h3>
+<p>번갈아 쓰는 것이면 동시성 제어는 필요 없습니다. 대신 조건이 하나 — <b>상태가 에이전트 안에 남아 있으면 안 됩니다.</b> 대화 이력은 세션이 끝나면 사라집니다. 다른 호스트로 갈아타는 순간 새 에이전트는 <em>아무것도 모르는 상태</em>로 시작합니다.</p>
+
+<figure>
+<div class="fnum">그림 8 — 세션이 바뀌어도 남는 것</div>
+<svg viewBox="0 0 900 340" role="img" aria-label="세션이 바뀌어도 그래프와 원고, 계류 제안, 세션 노드는 남는다. 대화 이력만 사라진다. 새 세션은 세션 노드를 읽어 이전 작업을 이어받는다.">
+  <defs><marker id="d8a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="24" width="200" height="76" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="124" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--indigo)">화요일 · Claude Code</text>
+  <text x="124" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)">14장 초고 집필</text>
+  <text x="124" y="83" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)" opacity=".75">제안 3건 · 2건 승인</text>
+  <rect x="350" y="24" width="200" height="76" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.4"/>
+  <text x="450" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--brass)">수요일 · Codex</text>
+  <text x="450" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">1–14장 연속성 검수</text>
+  <text x="450" y="83" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)" opacity=".75">진단 6건 기록</text>
+  <rect x="676" y="24" width="200" height="76" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="776" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--indigo)">목요일 · Claude Code</text>
+  <text x="776" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)">진단 6건 반영 · 15장</text>
+  <path d="M228 62 L344 62" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".4"/>
+  <path d="M554 62 L670 62" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".4"/>
+  <text x="286" y="54" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".5">대화 이력 소멸</text>
+  <text x="612" y="54" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".5">대화 이력 소멸</text>
+  <line x1="124" y1="100" x2="124" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#d8a)" opacity=".65"/>
+  <line x1="450" y1="100" x2="450" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#d8a)" opacity=".65"/>
+  <line x1="776" y1="100" x2="776" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#d8a)" opacity=".65"/>
+  <path d="M112 150 L112 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#d8a)" color="var(--moss)"/>
+  <path d="M438 150 L438 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#d8a)" color="var(--moss)"/>
+  <path d="M764 150 L764 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#d8a)" color="var(--moss)"/>
+  <text x="152" y="132" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--moss)">읽기 ↑ / 쓰기 ↓</text>
+  <rect x="24" y="154" width="852" height="106" rx="11" fill="var(--surface-2)" stroke="var(--moss)" stroke-width="1.8"/>
+  <text x="44" y="177" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">남는 것 — 호스트와 무관하게 지속</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="11" fill="currentColor" text-anchor="middle">
+    <rect x="44" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="138" y="209">store/story.db · 그래프</text>
+    <rect x="244" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="338" y="209">manuscript/ · git</text>
+    <rect x="444" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="538" y="209">계류 제안 · 진단</text>
+    <rect x="644" y="190" width="188" height="30" rx="6" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.4"/><text x="738" y="209" fill="var(--thread)" font-weight="600">session/ 노드</text>
+    <rect x="44" y="226" width="788" height="24" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity=".4" stroke-dasharray="3 3"/>
+    <text x="438" y="243" opacity=".7">AGENTS.md · skills/ · plugin.json — 양쪽이 같은 규칙을 읽음</text>
+  </g>
+  <rect x="24" y="276" width="852" height="52" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="44" y="298" font-family="IBM Plex Sans KR,sans-serif" font-size="12" font-weight="700" fill="var(--thread)">스위칭이 강제하는 규율</text>
+  <text x="44" y="318" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)">“다음 턴에 이어서 하자”를 <tspan font-family="IBM Plex Mono,monospace">session/</tspan> 노드에 안 적으면 그 의도는 영영 사라집니다. 대화에 기대는 습관이 여기서 비용을 청구합니다.</text>
+</svg>
+<figcaption>스위칭은 부담이 아니라 <b>규율 장치</b>입니다. 한 호스트만 쓰면 “대화에 남아 있으니까 괜찮겠지”로 넘어가는 것들이, 호스트를 갈아타는 순간 전부 드러납니다. <b>스위칭이 잘 되는 시스템은 그 자체로 잘 설계된 시스템입니다.</b></figcaption>
+</figure>
+
+<h3><span class="num">13.3</span>인계 — <code>session/</code> 노드</h3>
+<p>새 툴은 필요 없습니다. <b>세션 자체를 그래프의 노드로 두면</b> 기존 <code>get</code>·<code>propose</code>로 전부 해결됩니다.</p>
+<pre><code><span class="k">Session</span> <span class="s">"session/2026-08-24-claude-a7f2"</span> {
+  host        <span class="s">"claude-code"</span>       model <span class="s">"claude-opus"</span>
+  started     <span class="s">"2026-08-24T09:12Z"</span>  ended <span class="s">"2026-08-24T11:40Z"</span>
+  intent      <span class="s">"14장 초고 집필"</span>
+  did         [<span class="s">"14장 1씬 확정"</span>, <span class="s">"젖은장갑 복선 eligible로 승격"</span>]
+  <span class="t">open_threads</span> [<span class="s">"놋쇠열쇠 트리거 미정 — 17장 지하창고 안 검토 중"</span>,
+               <span class="s">"도영 주손 정정 제안 보류(충돌) — 22장 원고 확인 필요"</span>]
+  <span class="t">next</span>        <span class="s">"1–14장 연속성 검수 후 15장"</span>
+  touched     [<span class="s">"scene/A2.C14.S01"</span>, <span class="s">"promise/젖은장갑"</span>, <span class="s">"character/한도영"</span>]
+}</code></pre>
+
+<p>그리고 <code>AGENTS.md</code>에 <b>양쪽 호스트가 똑같이 읽는 두 절</b>을 박아둡니다. 이게 인계 프로토콜의 전부입니다.</p>
+<pre><code><span class="c"># AGENTS.md 발췌 (실제 파일은 저장소 루트에 있음)</span>
+
+<span class="k">## 세션 시작 시 반드시</span>
+1. get("story://session/latest") — 이전 세션의 open_threads와 next를 읽는다
+2. check(scope="book", severity="error") — 미해결 진단을 먼저 본다
+3. promises(status=["eligible"]) — 회수 가능한 복선을 컨텍스트에 올린다
+
+<span class="k">## 세션 종료 시 반드시</span>
+propose로 새 session 노드를 남긴다. <span class="t">open_threads와 next는 비워두지 않는다</span> —
+적지 않은 의도는 다음 세션에 존재하지 않는 것과 같다.</code></pre>
+
+<div class="key">
+  <div class="lbl">왜 훅이 아니라 AGENTS.md인가</div>
+  <p>훅으로 강제할 수도 있지만, <b>그건 호스트마다 따로 써야 하는 유일한 파일</b>입니다. 인계는 두 호스트가 <em>같은 규칙</em>으로 움직여야 하는 지점이라 코어에 두는 게 맞습니다. 훅은 나중에 “잊었으면 경고하는” 보조로만 얹으세요.</p>
+</div>
+
+<h3><span class="num">13.4</span>역할을 시간으로 나누기</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>턴</th><th>하는 일</th><th>여는 툴</th><th>닫을 때 남기는 것</th></tr></thead>
+<tbody>
+<tr><td><span class="pill evt">집필 턴</span></td><td>씬 집필. 넓은 컨텍스트, 창작 우선</td><td><code>promises(eligible)</code> → <code>neighborhood</code> → <code>propose</code></td><td>확정된 씬 · 새로 심은 복선 · <code>open_threads</code></td></tr>
+<tr><td><span class="pill dev">검수 턴</span></td><td>연속성·가시성·복선 검증. <b>다른 모델 계열로</b></td><td><code>check</code> · <code>promises</code> · <code>refs</code> · <code>trace</code> · <code>impact</code></td><td>진단 목록 · <code>contradicts</code> 간선. <b>고치지 않음</b></td></tr>
+<tr><td><span class="pill sub">정리 턴</span></td><td>인덱스 재구축, 요약 갱신, 관계 통합</td><td><code>ingest</code> · <code>propose</code></td><td>파생 노드 갱신</td></tr>
+</tbody>
+</table>
+</div>
+<p>핵심은 <b>검수 턴이 고치지 않는 것</b>입니다. 고치게 하면 고치면서 새 모순을 만듭니다. 그리고 <b>검수 턴에는 다른 모델 계열을 쓰세요</b> — 같은 모델은 자기가 놓친 것을 똑같이 놓칩니다. 스위칭 운용의 최대 실익이고, 사실상 <b>번갈아 쓰는 이유 그 자체</b>입니다.</p>
+
+<h3><span class="num">13.5</span>행동 드리프트 방지</h3>
+<p>스위칭에서 실제로 성가신 건 충돌이 아니라 <b>두 호스트가 미묘하게 다르게 행동하는 것</b>입니다.</p>
+<div class="tbl">
+<table>
+<thead><tr><th>차이</th><th>Claude Code</th><th>Codex</th><th>정규화</th></tr></thead>
+<tbody>
+<tr><td>MCP prompts</td><td>지원</td><td class="n">미구현</td><td><b>쓰지 않는다.</b> 진입점은 전부 <code>tools/*</code></td></tr>
+<tr><td>커스텀 슬래시 커맨드</td><td>있음</td><td class="n">제거됨</td><td>워크플로를 <b>스킬로만</b> 정의</td></tr>
+<tr><td>스킬 목록 예산</td><td><code>description</code> 1,536자 절단</td><td>컨텍스트 2% 또는 8,000자</td><td>스킬 <code>description</code>을 <b>1,400자 이하</b>로</td></tr>
+<tr><td>스킬 frontmatter</td><td>확장 필드 다수</td><td class="n">규격 6필드만 파싱</td><td>규격 6필드만 사용. 확장은 하드 에러</td></tr>
+<tr><td>프로젝트 지침</td><td><code>CLAUDE.md</code> + <code>AGENTS.md</code></td><td><code>AGENTS.md</code> (32 KiB)</td><td><b><code>AGENTS.md</code>가 단일 소스</b></td></tr>
+<tr><td>승인 모델</td><td>권한 규칙</td><td><code>approval_policy</code> + 샌드박스</td><td>게이트는 <b>서버 툴 구현부에</b></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <div class="lbl">한 줄 규칙</div>
+  <p>두 호스트 중 <b>더 좁은 쪽에 맞춰 설계</b>하세요. 그러면 넓은 쪽에서는 자동으로 돕니다. 반대로 하면 스위칭할 때마다 뭔가가 조용히 사라집니다.</p>
+</div>
+
+<h3><span class="num">13.6</span>스위칭의 뜻밖의 이득 — A/B 비교가 공짜</h3>
+<p>같은 설정집·같은 복선 상태에서 두 모델이 같은 챕터를 쓰게 하고 결과를 비교할 수 있습니다. op 로그에 <code>model_id</code>가 이미 들어 있으니 모델별 CED를 그냥 집계하면 됩니다.</p>
+<pre><code><span class="k">SELECT</span> p.model_id,
+       <span class="k">COUNT</span>(d.id) * 10000.0 / <span class="k">SUM</span>(s.word_count) <span class="k">AS</span> ced
+<span class="k">FROM</span> proposal p
+  <span class="k">JOIN</span> op   o <span class="k">ON</span> o.proposal = p.id
+  <span class="k">JOIN</span> node s <span class="k">ON</span> s.id = o.target <span class="k">AND</span> s.kind = <span class="s">'Scene'</span>
+  <span class="k">LEFT JOIN</span> diagnostic d <span class="k">ON</span> d.node = s.id
+<span class="k">WHERE</span> p.status = <span class="s">'accepted'</span>
+<span class="k">GROUP BY</span> p.model_id;</code></pre>
+<p><a href="03-개발계획서.html#test">개발계획서의 회귀 스위트</a>가 <b>모델 선택 실험 도구로도 그대로 쓰입니다.</b> 별도로 만들 게 없습니다.</p>
+
+<div class="trail"><a href="01-기획서.html"><div class="k">← 이전</div><div class="t">기획서</div></a><a href="03-개발계획서.html"><div class="k">다음 →</div><div class="t">개발계획서</div></a></div>
+</main>
+</div>

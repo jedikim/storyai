@@ -1,0 +1,788 @@
+<title>UI 목업 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#6B6E7E;
+  --thread:#B23A48; --indigo:#3D5A80; --moss:#4C7150; --brass:#9E7B33;
+  --thread-bg:#F7E9EB; --indigo-bg:#E8EEF6; --moss-bg:#E9F1E9; --brass-bg:#F6EFE0;
+  --ok:#3F7A54; --warn:#9E7B33; --bad:#B23A48;
+  --shadow:0 1px 2px rgba(23,26,36,.06), 0 8px 24px rgba(23,26,36,.07);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E6E7EE; --paper:#0E1016; --surface:#171A24; --surface-2:#1D212C;
+    --line:#2C3140; --line-soft:#232734; --muted:#8B8FA3;
+    --thread:#E5757F; --indigo:#84A8D2; --moss:#84B486; --brass:#D6AC63;
+    --thread-bg:#2C1D22; --indigo-bg:#1A2434; --moss-bg:#1A2620; --brass-bg:#2A2418;
+    --ok:#71B187; --warn:#D6AC63; --bad:#E5757F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E6E7EE; --paper:#0E1016; --surface:#171A24; --surface-2:#1D212C;
+  --line:#2C3140; --line-soft:#232734; --muted:#8B8FA3;
+  --thread:#E5757F; --indigo:#84A8D2; --moss:#84B486; --brass:#D6AC63;
+  --thread-bg:#2C1D22; --indigo-bg:#1A2434; --moss-bg:#1A2620; --brass-bg:#2A2418;
+  --ok:#71B187; --warn:#D6AC63; --bad:#E5757F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:14px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  height:100vh; overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:3px}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:0 14px;height:52px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:baseline;gap:8px;padding-right:6px}
+.brand b{font-weight:700;letter-spacing:-.01em}
+.brand span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tabs{display:flex;gap:2px;background:var(--surface-2);padding:3px;border-radius:7px}
+.tabs button{padding:5px 12px;border-radius:5px;font-size:13px;color:var(--muted);white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.omni{
+  flex:1;min-width:120px;display:flex;align-items:center;gap:8px;
+  background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;padding:6px 10px;
+}
+.omni input{flex:1;background:none;border:none;font:inherit;color:inherit;outline:none;min-width:0}
+.omni input::placeholder{color:var(--muted)}
+.omni kbd{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:1px 4px}
+.topbar .agentstate{
+  display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);
+  font-family:var(--mono);white-space:nowrap;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 20%,transparent)}
+
+.main{display:grid;grid-template-columns:212px 1fr 320px;min-height:0}
+@media (max-width:1100px){.main{grid-template-columns:1fr}.rail,.inspector{display:none}}
+
+/* ---------- left rail ---------- */
+.rail{background:var(--surface);border-right:1px solid var(--line);overflow-y:auto;padding:14px 0}
+.rail h3{
+  margin:0;padding:0 14px 7px;font-size:10px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);
+}
+.rail section{margin-bottom:18px}
+.tglist{display:flex;flex-direction:column}
+.tg{
+  display:flex;align-items:center;gap:9px;padding:5px 14px;font-size:13px;
+  cursor:pointer;user-select:none;border-left:2px solid transparent;
+}
+.tg:hover{background:var(--surface-2)}
+.tg.off{opacity:.34}
+.tg .sw{width:9px;height:9px;border-radius:2.5px;flex:none}
+.tg .n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tg[data-layer="device"] .sw{background:var(--thread)}
+.tg[data-layer="event"] .sw{background:var(--indigo)}
+.tg[data-layer="substance"] .sw{background:var(--moss)}
+.layerhead{padding:0 14px 4px;font-size:11px;color:var(--muted);font-weight:600}
+
+/* ---------- canvas ---------- */
+.stage{position:relative;overflow:hidden;background:
+  radial-gradient(circle at 1px 1px, color-mix(in srgb,var(--muted) 26%,transparent) 1px, transparent 0) 0 0/22px 22px,
+  var(--paper);
+  cursor:grab}
+.stage.dragging{cursor:grabbing}
+.world{position:absolute;inset:0;transform-origin:0 0}
+.edges{position:absolute;inset:0;overflow:visible;pointer-events:none;width:100%;height:100%}
+
+.node{
+  position:absolute;width:186px;background:var(--surface);border:1px solid var(--line);
+  border-radius:9px;box-shadow:var(--shadow);padding:9px 11px;cursor:pointer;
+  transition:box-shadow .12s, border-color .12s, opacity .15s;
+}
+.node:hover{border-color:var(--muted)}
+.node.sel{border-color:var(--accentc);box-shadow:0 0 0 2px color-mix(in srgb,var(--accentc) 34%,transparent),var(--shadow)}
+.node.dim{opacity:.16;pointer-events:none}
+.node .kind{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accentc);font-weight:500;display:flex;align-items:center;gap:5px;
+}
+.node .kind::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--accentc)}
+.node .ttl{font-weight:600;font-size:13.5px;margin-top:2px;letter-spacing:-.005em}
+.node .sub{font-size:11.5px;color:var(--muted);margin-top:1px;font-family:var(--mono)}
+.node .chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.chip{
+  font-size:10px;padding:1px 5px;border-radius:4px;background:var(--surface-2);
+  color:var(--muted);border:1px solid var(--line-soft);font-family:var(--mono);
+}
+.chip.hot{background:var(--accentb);color:var(--accentc);border-color:transparent;font-weight:500}
+.node[data-layer="device"]{--accentc:var(--thread);--accentb:var(--thread-bg)}
+.node[data-layer="event"]{--accentc:var(--indigo);--accentb:var(--indigo-bg)}
+.node[data-layer="substance"]{--accentc:var(--moss);--accentb:var(--moss-bg)}
+
+.legend{
+  position:absolute;left:12px;bottom:12px;background:color-mix(in srgb,var(--surface) 92%,transparent);
+  border:1px solid var(--line);border-radius:8px;padding:9px 11px;backdrop-filter:blur(8px);
+  font-size:11px;display:flex;flex-direction:column;gap:5px;
+}
+.legend .row{display:flex;align-items:center;gap:7px;color:var(--muted)}
+.legend svg{flex:none}
+.zoomctl{
+  position:absolute;right:12px;bottom:12px;display:flex;gap:1px;background:var(--surface);
+  border:1px solid var(--line);border-radius:7px;overflow:hidden;box-shadow:var(--shadow);
+}
+.zoomctl button{padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.zoomctl button:hover{background:var(--surface-2);color:var(--ink)}
+.zoomctl button+button{border-left:1px solid var(--line-soft)}
+
+/* ---------- inspector ---------- */
+.inspector{background:var(--surface);border-left:1px solid var(--line);overflow-y:auto}
+.insp-head{padding:14px 16px 12px;border-bottom:1px solid var(--line-soft)}
+.insp-head .kind{
+  font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--accentc,var(--muted));font-weight:500;
+}
+.insp-head h2{margin:3px 0 4px;font-size:17px;font-weight:700;letter-spacing:-.015em}
+.addr{font-family:var(--mono);font-size:11px;color:var(--muted);word-break:break-all;
+  background:var(--surface-2);border:1px solid var(--line-soft);border-radius:5px;padding:3px 6px;display:inline-block}
+.insp section{padding:13px 16px;border-bottom:1px solid var(--line-soft)}
+.insp h4{
+  margin:0 0 8px;font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:5px 10px;font-size:12.5px;align-items:baseline}
+.kv dt{color:var(--muted);font-size:11.5px}
+.kv dd{margin:0;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-family:var(--mono);font-weight:500}
+.pill.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 17%,transparent);color:var(--warn)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.pill.neutral{background:var(--surface-2);color:var(--muted);border:1px solid var(--line-soft)}
+
+.timebar{margin-top:4px}
+.timebar .lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:3px}
+.track{position:relative;height:7px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line-soft);overflow:hidden}
+.track .fill{position:absolute;top:0;bottom:0;border-radius:4px}
+.track .fill.story{background:color-mix(in srgb,var(--indigo) 55%,transparent)}
+.track .fill.reveal{background:color-mix(in srgb,var(--thread) 60%,transparent)}
+.track .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--thread)}
+
+.reflist{display:flex;flex-direction:column;gap:5px}
+.ref{
+  display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;
+  background:var(--surface-2);border:1px solid var(--line-soft);cursor:pointer;font-size:12px;
+}
+.ref:hover{border-color:var(--muted)}
+.ref .e{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.ref .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref.soft{border-style:dashed;opacity:.8}
+
+.prose{
+  font-family:var(--serif);font-size:13.5px;line-height:1.85;
+  border-left:2px solid var(--line);padding-left:11px;color:color-mix(in srgb,var(--ink) 84%,var(--muted));
+}
+.prose mark{background:color-mix(in srgb,var(--thread) 22%,transparent);color:inherit;padding:0 2px;border-radius:2px}
+
+.prov{font-size:11.5px;display:flex;flex-direction:column;gap:6px}
+.prov .r{display:flex;gap:8px;align-items:baseline}
+.prov .who{font-family:var(--mono);font-size:10px;padding:0 5px;border-radius:3px;white-space:nowrap}
+.prov .who.human{background:var(--indigo-bg);color:var(--indigo)}
+.prov .who.agent{background:var(--thread-bg);color:var(--thread)}
+.prov .who.cascade{background:var(--brass-bg);color:var(--brass)}
+.prov .what{color:var(--muted);flex:1}
+.prov time{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* ---------- panels (boards) ---------- */
+.board{overflow:auto;padding:20px 24px;background:var(--paper)}
+.board h2{margin:0 0 3px;font-size:19px;letter-spacing:-.02em;font-weight:700}
+.board .lede{margin:0 0 18px;color:var(--muted);font-size:13px;max-width:62ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;align-items:start}
+.col{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.col > header{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.col > header h3{margin:0;font-size:12px;font-weight:600;letter-spacing:.03em}
+.col > header .n{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.card{
+  background:var(--surface-2);border:1px solid var(--line-soft);border-radius:8px;
+  padding:9px 10px;margin-bottom:8px;border-left:3px solid var(--c,var(--line));
+}
+.card .h{font-weight:600;font-size:13px;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:1px}
+.card .ftp{display:grid;grid-template-columns:14px 1fr;gap:3px 7px;margin-top:7px;font-size:11.5px}
+.card .ftp b{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:500}
+.card .met{display:flex;gap:10px;margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.card .met b{color:var(--ink);font-weight:500}
+
+/* diff / review */
+.queue{display:flex;flex-direction:column;gap:12px;max-width:860px}
+.prop{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.prop > header{display:flex;align-items:center;gap:9px;padding:10px 13px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.prop > header .t{font-weight:600;font-size:13.5px}
+.prop > header .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.prop .why{padding:9px 13px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2)}
+.ops{padding:4px 0}
+.op{display:grid;grid-template-columns:16px 1fr;gap:9px;padding:6px 13px;font-family:var(--mono);font-size:11.5px;align-items:baseline}
+.op .s{font-weight:600;text-align:center}
+.op.add .s{color:var(--ok)} .op.del .s{color:var(--bad)} .op.mod .s{color:var(--warn)}
+.op .d{word-break:break-word}
+.op .d s{color:var(--bad);text-decoration-thickness:1px;opacity:.85}
+.op .d ins{color:var(--ok);text-decoration:none;background:color-mix(in srgb,var(--ok) 12%,transparent);padding:0 2px;border-radius:2px}
+.readset{padding:8px 13px;border-top:1px solid var(--line-soft);font-size:11px;color:var(--muted);
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.readset code{font-family:var(--mono);font-size:10.5px;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;color:var(--ink)}
+.acts{display:flex;gap:7px;padding:10px 13px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.btn{padding:5px 13px;border-radius:6px;border:1px solid var(--line);font-size:12.5px;font-weight:500;background:var(--surface)}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.pri:hover{opacity:.88}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+
+/* timeline board */
+.tl{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto}
+.tl svg{display:block;min-width:760px;width:100%;height:auto}
+
+/* ---------- bottom status ---------- */
+.status{
+  display:flex;align-items:center;gap:16px;padding:0 14px;height:30px;
+  background:var(--surface);border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:var(--muted);overflow-x:auto;white-space:nowrap;
+}
+.status b{color:var(--ink);font-weight:500}
+.status .sep{width:1px;height:12px;background:var(--line);flex:none}
+.hidden{display:none !important}
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <a href="index.html" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted);padding-right:4px;white-space:nowrap" title="문서 세트로">← 문서</a>
+  <div class="brand"><b>회색 등대</b><span>storyai · UI 목업</span></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-view="graph">그래프</button>
+      <button role="tab" aria-selected="false" data-view="promise">복선 보드</button>
+      <button role="tab" aria-selected="false" data-view="time">이중 시간축</button>
+      <button role="tab" aria-selected="false" data-view="review">검수 큐 <span id="qn" style="font-family:var(--mono);font-size:10px;opacity:.7">3</span></button>
+    </div>
+    <label class="omni">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--muted);flex:none"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+      <input id="q" placeholder="노드·주소·태그 검색  ( character/한도영, #POV, promise:eligible )">
+      <kbd>⌘K</kbd>
+    </label>
+    <div class="agentstate"><span class="dot"></span>claude-code 연결됨</div>
+  </div>
+
+  <div class="main" id="viewGraph">
+    <!-- LEFT RAIL -->
+    <aside class="rail">
+      <section>
+        <h3>노드 타입</h3>
+        <div class="layerhead">서사 장치 <span style="color:var(--thread)">device</span></div>
+        <div class="tglist" id="tgDevice"></div>
+        <div class="layerhead" style="margin-top:9px">사건 <span style="color:var(--indigo)">event</span></div>
+        <div class="tglist" id="tgEvent"></div>
+        <div class="layerhead" style="margin-top:9px">원소 <span style="color:var(--moss)">substance</span></div>
+        <div class="tglist" id="tgSubstance"></div>
+      </section>
+      <section>
+        <h3>진단</h3>
+        <div class="tglist">
+          <div class="tg"><span class="sw" style="background:var(--bad)"></span>미회수 복선<span class="n">2</span></div>
+          <div class="tg"><span class="sw" style="background:var(--warn)"></span>가시성 위반<span class="n">1</span></div>
+          <div class="tg"><span class="sw" style="background:var(--warn)"></span>시간 구간 충돌<span class="n">1</span></div>
+          <div class="tg"><span class="sw" style="background:var(--ok)"></span>참조 무결성<span class="n">0</span></div>
+        </div>
+      </section>
+      <section>
+        <h3>기준 시점</h3>
+        <div style="padding:0 14px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;justify-content:space-between">
+            <span>as_of</span><b style="color:var(--ink)" id="asofLbl">14장</b>
+          </div>
+          <input type="range" id="asof" min="1" max="28" value="14" style="width:100%;margin-top:6px;accent-color:var(--indigo)">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">
+            이 시점 이후에 밝혀진 사실은 그래프에서 숨겨집니다.
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- CANVAS -->
+    <div class="stage" id="stage">
+      <div class="world" id="world">
+        <svg class="edges" id="edges" aria-hidden="true">
+          <defs>
+            <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L8 4 L0 8 z" fill="currentColor"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="row"><svg width="30" height="8"><line x1="1" y1="4" x2="29" y2="4" stroke="currentColor" stroke-width="1.5"/></svg> hard edge — 기계가 갱신·연쇄</div>
+        <div class="row"><svg width="30" height="8"><line x1="1" y1="4" x2="29" y2="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/></svg> soft edge — 산문 언급, 보고만</div>
+        <div class="row"><svg width="30" height="8"><line x1="1" y1="4" x2="29" y2="4" stroke="var(--thread)" stroke-width="2"/></svg> 복선 실 — 설정→트리거→회수</div>
+      </div>
+      <div class="zoomctl">
+        <button id="zo" title="축소">−</button><button id="zr" title="맞춤">맞춤</button><button id="zi" title="확대">+</button>
+      </div>
+    </div>
+
+    <!-- INSPECTOR -->
+    <aside class="inspector insp" id="insp"></aside>
+  </div>
+
+  <!-- PROMISE BOARD -->
+  <div class="board hidden" id="viewPromise">
+    <h2>복선 보드</h2>
+    <p class="lede">복선은 <b>(설정 F → 트리거 T → 회수 P)</b> 3항으로 저장됩니다. 트리거가 없으면 “아직 안 터진 복선”과 “근거 없이 터진 회수”를 구분할 수 없습니다.</p>
+    <div class="cols" id="promiseCols"></div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="board hidden" id="viewTime">
+    <h2>이중 시간축</h2>
+    <p class="lede">가로축은 <b>독자에게 드러난 순서(discourse)</b>, 세로 위치는 <b>작중 실제 시간(story)</b>입니다. 두 축이 어긋난 구간이 회상·플래시백이고, 그 어긋남 자체가 데이터입니다.</p>
+    <div class="tl" id="tlBox"></div>
+  </div>
+
+  <!-- REVIEW QUEUE -->
+  <div class="board hidden" id="viewReview">
+    <h2>검수 큐</h2>
+    <p class="lede">에이전트의 모든 쓰기는 <b>제안(Proposal)</b>으로 들어옵니다. 각 제안은 근거로 읽은 노드 목록(read set)을 함께 기록하며, 그 목록이 곧 충돌 판정 기준이자 도미노 전파의 의존 간선입니다.</p>
+    <div class="queue" id="queue"></div>
+  </div>
+
+  <div class="status">
+    <span>노드 <b id="stN">0</b></span><span class="sep"></span>
+    <span>간선 <b id="stE">0</b></span><span class="sep"></span>
+    <span>미회수 복선 <b style="color:var(--bad)">2</b></span><span class="sep"></span>
+    <span>대기 제안 <b style="color:var(--warn)">3</b></span><span class="sep"></span>
+    <span>마지막 인덱싱 <b>14장 · 0.4s</b></span><span class="sep"></span>
+    <span>store <b>story.db</b> · 4.1 MB</span>
+  </div>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const KINDS = {
+  Promise:{layer:"device",ko:"복선"}, Twist:{layer:"device",ko:"반전"},
+  Reveal:{layer:"device",ko:"폭로"}, Fact:{layer:"device",ko:"사실"},
+  Thread:{layer:"device",ko:"플롯라인"},
+  Scene:{layer:"event",ko:"씬"}, Event:{layer:"event",ko:"사건"},
+  Character:{layer:"substance",ko:"인물"}, Location:{layer:"substance",ko:"장소"},
+  Object:{layer:"substance",ko:"소품"}, Rule:{layer:"substance",ko:"세계 규칙"}
+};
+
+const N = [
+ {id:"character/한도영",kind:"Character",t:"한도영",s:"등대지기 · 47세",x:60,y:250,
+  tags:["#Character","#Suspect","+SecretKeeper"],
+  fields:{역할:"용의자→진범",주손:"왼손 (3장 확립)",상태:"생존 (as_of 14장)"},
+  story:[1,28],reveal:2,
+  prose:"도영은 <mark>왼손으로</mark> 등피를 닦았다. 오른손은 주머니에서 나오지 않았다.",
+  refs:[["appears_in","scene/A1.C03.S02","3장 2씬 · 등대 내부"],["appears_in","scene/A2.C14.S01","14장 1씬 · 폐선착장"],["owns","object/놋쇠열쇠","놋쇠 열쇠"],["mentioned_in","scene/A1.C05.S03","5장 3씬 (산문 언급)",true]],
+  prov:[["human","주손을 왼손으로 확정","08-19 14:02"],["agent","3장 원고에서 상태 추출","08-19 13:58"]]},
+
+ {id:"character/서지운",kind:"Character",t:"서지운",s:"형사 · POV",x:60,y:60,
+  tags:["#Character","#POV","#Focalizer"],
+  fields:{역할:"주인공",초점화:"1인칭 과거",상태:"생존"},
+  story:[1,28],reveal:1,
+  prose:"나는 무연도로 가는 마지막 배를 놓쳤다. 그게 시작이었다.",
+  refs:[["focalizes","scene/A1.C03.S02","3장 2씬"],["hostile_to","character/한도영","한도영"],["appears_in","scene/A2.C14.S01","14장 1씬"]],
+  prov:[["human","POV 인물로 지정","08-12 09:30"]]},
+
+ {id:"object/젖은장갑",kind:"Object",t:"젖은 장갑",s:"소품 · 결정적 단서",x:330,y:250,
+  tags:["#Object","#Clue","+Evidence"],
+  fields:{소유자:"한도영",상태:"젖음 → 압수",등장:"3장, 14장"},
+  story:[3,14],reveal:3,
+  prose:"장갑은 <mark>바닷물에 젖어</mark> 있었다. 등대 안은 마른 곳이었는데도.",
+  refs:[["planted_in","scene/A1.C03.S02","3장 2씬 — 설정 지점"],["owns⁻¹","character/한도영","한도영"],["evidence_for","promise/젖은장갑","복선: 젖은 장갑"]],
+  prov:[["agent","3장에서 소품 노드 생성","08-19 13:58"],["cascade","소유자 변경으로 재검증","08-22 10:11"]]},
+
+ {id:"object/놋쇠열쇠",kind:"Object",t:"놋쇠 열쇠",s:"소품 · 미회수",x:330,y:420,
+  tags:["#Object","#Clue"],
+  fields:{소유자:"한도영",상태:"행방 불명",등장:"5장"},
+  story:[5,null],reveal:5,
+  prose:"주머니에서 <mark>놋쇠 열쇠</mark>가 딸그락거렸다. 무엇을 여는 열쇠인지는 말하지 않았다.",
+  refs:[["planted_in","scene/A1.C05.S03","5장 3씬 — 설정 지점"],["evidence_for","promise/놋쇠열쇠","복선: 놋쇠 열쇠 (미회수)"]],
+  prov:[["agent","5장에서 소품 노드 생성","08-20 11:04"]]},
+
+ {id:"rule/만조고립",kind:"Rule",t:"만조 고립",s:"세계 규칙 · 불변",x:60,y:420,
+  tags:["#Rule","#Canon","#Locked"],
+  fields:{범위:"무연도 전역",효력:"1장~끝",잠금:"canon (수정 시 승인 필요)"},
+  story:[1,28],reveal:4,
+  prose:"만조에는 네 시간 동안 섬이 끊긴다. 그건 이 섬에서 사는 사람이면 다 아는 일이다.",
+  refs:[["constrains","scene/A2.C14.S01","14장 1씬"],["enables","promise/젖은장갑","복선: 젖은 장갑"]],
+  prov:[["human","세계 규칙 직접 작성 · canon 잠금","08-12 10:15"]]},
+
+ {id:"scene/A1.C03.S02",kind:"Scene",t:"등대 내부, 첫 심문",s:"3장 2씬 · 1,840자",x:600,y:150,
+  tags:["#Scene","#Act1"],
+  fields:{장소:"무연도 등대",참여:"서지운, 한도영",story_time:"D+1 저녁"},
+  story:[3,3],reveal:3,
+  pre:["도영 생존","지운 섬 도착"],post:["장갑 젖음 확립","도영 왼손잡이 확립"],forbid:["조수 시간표 노출"],
+  prose:"등피 너머로 바다가 검게 뒤척였다. 그는 <mark>왼손으로</mark> 유리를 닦으며 내 질문을 두 번 되물었다.",
+  refs:[["contains","object/젖은장갑","젖은 장갑"],["performs⁻¹","character/한도영","한도영"],["plants","promise/젖은장갑","복선: 젖은 장갑"]],
+  prov:[["human","초고 작성","08-18 22:40"],["agent","전이 계약 Pre/Post/Forbid 추출","08-19 13:58"]]},
+
+ {id:"scene/A1.C05.S03",kind:"Scene",t:"폐선착장, 열쇠",s:"5장 3씬 · 1,120자",x:600,y:420,
+  tags:["#Scene","#Act1"],
+  fields:{장소:"폐선착장",참여:"한도영",story_time:"D+3 새벽"},
+  story:[5,5],reveal:5,
+  pre:["도영 생존"],post:["놋쇠 열쇠 존재 확립"],forbid:[],
+  prose:"주머니에서 <mark>놋쇠 열쇠</mark>가 딸그락거렸다.",
+  refs:[["plants","promise/놋쇠열쇠","복선: 놋쇠 열쇠"],["performs⁻¹","character/한도영","한도영"]],
+  prov:[["human","초고 작성","08-20 10:55"]]},
+
+ {id:"scene/A2.C14.S01",kind:"Scene",t:"조수 시간표",s:"14장 1씬 · 2,310자",x:600,y:280,
+  tags:["#Scene","#Act2","#Trigger"],
+  fields:{장소:"종로 사무실",참여:"서지운",story_time:"D+9 오후"},
+  story:[14,14],reveal:14,
+  pre:["장갑 젖음 확립","만조 고립 규칙"],post:["조수 시간표 공개","도영 알리바이 붕괴"],forbid:["진범 직접 명시"],
+  prose:"1993년 항해일지의 조수표를 펼쳤을 때, <mark>그날 밤 만조는 열한시였다.</mark>",
+  refs:[["triggers","promise/젖은장갑","복선: 젖은 장갑"],["constrained_by","rule/만조고립","만조 고립"]],
+  prov:[["agent","제안 후 사람이 승인","08-23 16:20"]]},
+
+ {id:"promise/젖은장갑",kind:"Promise",t:"복선: 젖은 장갑",s:"eligible · 회수 대기",x:880,y:180,
+  tags:["#Promise","kind:object"],
+  fields:{F:"3장 · 장갑이 젖어 있음",T:"14장 · 조수 시간표 공개",P:"미배치",status:"eligible"},
+  story:[3,null],reveal:3,
+  metrics:{"S-Eff":"0.18","Δ-Coh":"0.71","부채":"0.62"},
+  prose:"설정은 3장에 심겼고 트리거는 14장에 발화했다. 회수 장면이 아직 배치되지 않았다.",
+  refs:[["planted_in","scene/A1.C03.S02","3장 2씬"],["requires_trigger","scene/A2.C14.S01","14장 1씬 ✓ 발화"],["pays_off","—","미배치"]],
+  prov:[["agent","F–T–P 3항 추출","08-19 14:00"],["cascade","트리거 발화로 status 승격","08-23 16:21"]]},
+
+ {id:"promise/놋쇠열쇠",kind:"Promise",t:"복선: 놋쇠 열쇠",s:"hypothetical · 트리거 없음",x:880,y:420,
+  tags:["#Promise","kind:object","!미회수"],
+  fields:{F:"5장 · 정체불명의 열쇠",T:"미정의",P:"미배치",status:"hypothetical"},
+  story:[5,null],reveal:5,
+  metrics:{"S-Eff":"0.34","Δ-Coh":"—","부채":"0.88"},
+  prose:"트리거 조건이 정의되지 않아 회수 가능 여부를 판정할 수 없습니다. 끝까지 hypothetical이면 방치된 복선입니다.",
+  refs:[["planted_in","scene/A1.C05.S03","5장 3씬"],["requires_trigger","—","미정의 ⚠"]],
+  prov:[["agent","F 추출, T·P 미확정","08-20 11:04"]]},
+
+ {id:"twist/등대지기",kind:"Twist",t:"반전: 등대지기의 정체",s:"22장 예정 · 미도달",x:880,y:60,
+  tags:["#Twist","#Act3"],
+  fields:{예정:"22장",전제:"젖은 장갑 회수",가시성:"reader ∉ V",status:"hypothetical"},
+  story:[22,null],reveal:22,
+  metrics:{"의존 복선":"2","독자 예측률":"0.31"},
+  prose:"반전은 회수되지 않은 복선 두 개에 의존합니다. 두 복선이 모두 회수되기 전에 반전이 터지면 “근거 없는 해결”로 표시됩니다.",
+  refs:[["depends_on","promise/젖은장갑","복선: 젖은 장갑"],["depends_on","promise/놋쇠열쇠","복선: 놋쇠 열쇠 ⚠"]],
+  prov:[["human","반전 지점 직접 지정","08-14 20:10"]]}
+];
+
+const E = [
+ ["character/서지운","scene/A1.C03.S02","focalizes",1],
+ ["character/한도영","scene/A1.C03.S02","appears_in",1],
+ ["character/한도영","object/젖은장갑","owns",1],
+ ["character/한도영","object/놋쇠열쇠","owns",1],
+ ["object/젖은장갑","scene/A1.C03.S02","planted_in",1],
+ ["object/놋쇠열쇠","scene/A1.C05.S03","planted_in",1],
+ ["rule/만조고립","scene/A2.C14.S01","constrains",1],
+ ["character/한도영","scene/A1.C05.S03","appears_in",1],
+ ["character/서지운","scene/A2.C14.S01","appears_in",1],
+ ["character/한도영","scene/A1.C05.S03","mentioned_in",0],
+ ["scene/A1.C03.S02","promise/젖은장갑","plants",2],
+ ["scene/A2.C14.S01","promise/젖은장갑","triggers",2],
+ ["scene/A1.C05.S03","promise/놋쇠열쇠","plants",2],
+ ["promise/젖은장갑","twist/등대지기","required_by",2],
+ ["promise/놋쇠열쇠","twist/등대지기","required_by",2]
+];
+
+const PROPOSALS = [
+ {t:"14장 씬 커밋 후 하위 상태 갱신",model:"claude-opus / session a7f2",risk:"자동 승인 가능",riskCls:"ok",
+  why:"14장 1씬이 확정되면서 조수 시간표가 공개됩니다. 이 사실에 의존하던 복선의 트리거가 발화 조건을 만족합니다.",
+  ops:[["mod","promise/젖은장갑.status: <s>hypothetical</s> <ins>eligible</ins>"],
+       ["add","edge  scene/A2.C14.S01 --[triggers]--> promise/젖은장갑"],
+       ["mod","character/한도영.알리바이: <s>확인됨</s> <ins>붕괴</ins>  (story_valid: 14장~)"]],
+  read:["scene/A2.C14.S01@r31","rule/만조고립@r4","promise/젖은장갑@r12"]},
+
+ {t:"한도영 주손을 오른손으로 정정",model:"claude-opus / session a7f2",risk:"충돌 — 사람이 이미 수정",riskCls:"bad",
+  why:"22장 초고에서 도영이 오른손으로 칼을 잡는 묘사가 발견되어 정정을 제안했습니다. 그러나 read set의 basis_rev가 오래되었습니다.",
+  ops:[["mod","character/한도영.주손: <s>왼손</s> <ins>오른손</ins>"]],
+  read:["character/한도영@r7 <s>(현재 r9 — 사람이 08-19 14:02에 왼손으로 확정)</s>"],
+  conflict:"기준 리비전 r7이 현재 r9와 다릅니다. 사람의 확정을 덮어쓰지 않고 보류합니다. 정정이 필요한 쪽은 22장 원고일 수 있습니다."},
+
+ {t:"놋쇠 열쇠 복선의 트리거 조건 제안",model:"claude-opus / session b31c",risk:"검토 필요",riskCls:"warn",
+  why:"트리거가 정의되지 않은 복선이 22장 반전의 전제로 걸려 있습니다. 발화 조건 후보를 제안합니다.",
+  ops:[["add","promise/놋쇠열쇠.trigger: <ins>“등대 지하 창고의 존재가 밝혀진 이후”</ins>"],
+       ["add","node  scene/A2.C17.S02  (초안 · 지하 창고 발견)"],
+       ["add","edge  scene/A2.C17.S02 --[triggers]--> promise/놋쇠열쇠"]],
+  read:["promise/놋쇠열쇠@r3","twist/등대지기@r5","location/무연도등대@r11"]}
+];
+
+/* ---------------- graph render ---------------- */
+const byId = Object.fromEntries(N.map(n=>[n.id,n]));
+const world = document.getElementById("world");
+const svg = document.getElementById("edges");
+const stage = document.getElementById("stage");
+let sel = "promise/젖은장갑", off = {x:20,y:10}, scale = 1;
+function fit(){
+  const r=stage.getBoundingClientRect();
+  const xs=N.map(n=>n.x), ys=N.map(n=>n.y);
+  const minX=Math.min(...xs)-30, maxX=Math.max(...xs)+216;
+  const minY=Math.min(...ys)-30, maxY=Math.max(...ys)+140;
+  scale=Math.min(1, Math.min((r.width-40)/(maxX-minX), (r.height-40)/(maxY-minY)));
+  off={ x:(r.width-(maxX-minX)*scale)/2 - minX*scale,
+        y:(r.height-(maxY-minY)*scale)/2 - minY*scale };
+  apply();
+}
+const hidden = new Set();
+
+function nodeEl(n){
+  const d=document.createElement("div");
+  d.className="node"; d.dataset.id=n.id; d.dataset.layer=KINDS[n.kind].layer;
+  d.style.left=n.x+"px"; d.style.top=n.y+"px";
+  d.innerHTML=`<div class="kind">${n.kind} · ${KINDS[n.kind].ko}</div>
+    <div class="ttl">${n.t}</div><div class="sub">${n.s}</div>
+    <div class="chips">${n.tags.map(t=>`<span class="chip${t.startsWith("!")||t.startsWith("+")?" hot":""}">${t}</span>`).join("")}</div>`;
+  d.onclick=e=>{e.stopPropagation();sel=n.id;draw();};
+  return d;
+}
+
+function draw(){
+  [...world.querySelectorAll(".node")].forEach(e=>e.remove());
+  N.forEach(n=>world.appendChild(nodeEl(n)));
+  [...world.querySelectorAll(".node")].forEach(el=>{
+    const n=byId[el.dataset.id];
+    if(hidden.has(n.kind)) el.classList.add("dim");
+    if(n.id===sel) el.classList.add("sel");
+  });
+  drawEdges(); renderInsp(); apply();
+  document.getElementById("stN").textContent=N.length;
+  document.getElementById("stE").textContent=E.length;
+}
+
+function anchor(id){const n=byId[id];return {l:{x:n.x,y:n.y+38},r:{x:n.x+186,y:n.y+38},cx:n.x+93,cy:n.y+38};}
+
+function drawEdges(){
+  [...svg.querySelectorAll("g")].forEach(g=>g.remove());
+  const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+  E.forEach(([a,b,label,type])=>{
+    const A=anchor(a),B=anchor(b);
+    const dim = hidden.has(byId[a].kind)||hidden.has(byId[b].kind);
+    const near = sel===a||sel===b;
+    const fwd = B.cx>=A.cx;
+    const p1 = fwd?A.r:A.l, p2 = fwd?B.l:B.r;
+    const dx = Math.max(38,Math.abs(p2.x-p1.x)*0.45)*(fwd?1:-1);
+    const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",`M${p1.x} ${p1.y} C ${p1.x+dx} ${p1.y}, ${p2.x-dx} ${p2.y}, ${p2.x} ${p2.y}`);
+    path.setAttribute("fill","none");
+    const col = type===2?"var(--thread)":"var(--muted)";
+    path.setAttribute("stroke",col);
+    path.setAttribute("stroke-width",type===2?(near?2.6:1.9):(near?1.9:1.2));
+    if(type===0) path.setAttribute("stroke-dasharray","4 4");
+    path.setAttribute("opacity",dim?.08:(near?1:(type===2?.72:.42)));
+    path.setAttribute("marker-end","url(#ah)");
+    path.setAttribute("color",col);
+    g.appendChild(path);
+    if(near&&!dim){
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2-6;
+      const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+      t.setAttribute("x",mx);t.setAttribute("y",my);t.setAttribute("text-anchor","middle");
+      t.setAttribute("font-family","IBM Plex Mono, monospace");t.setAttribute("font-size","10.5");
+      t.setAttribute("fill",col);t.textContent=label;
+      const bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
+      bg.setAttribute("x",mx-label.length*3.4-4);bg.setAttribute("y",my-10);
+      bg.setAttribute("width",label.length*6.8+8);bg.setAttribute("height",14);bg.setAttribute("rx",3);
+      bg.setAttribute("fill","var(--paper)");
+      g.appendChild(bg);g.appendChild(t);
+    }
+  });
+  svg.appendChild(g);
+}
+
+function renderInsp(){
+  const n=byId[sel], layer=KINDS[n.kind].layer, insp=document.getElementById("insp");
+  const c = layer==="device"?"var(--thread)":layer==="event"?"var(--indigo)":"var(--moss)";
+  const sFrom=n.story[0], sTo=n.story[1];
+  const pct=v=>((v-1)/27*100);
+  const flashback = n.reveal>sFrom;
+  insp.style.setProperty("--accentc",c);
+  insp.innerHTML=`
+  <div class="insp-head">
+    <div class="kind" style="color:${c}">${n.kind} · ${KINDS[n.kind].ko}</div>
+    <h2>${n.t}</h2>
+    <div class="addr">story://${n.id}</div>
+  </div>
+  <section>
+    <h4>필드</h4>
+    <dl class="kv">${Object.entries(n.fields).map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+  </section>
+  ${n.metrics?`<section><h4>측정값</h4><dl class="kv">${Object.entries(n.metrics).map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+   <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45">S-Eff는 첫 독서 시 얼마나 티가 나는지, Δ-Coh는 사후에 얼마나 납득되는지입니다. <b>좋은 단서는 S-Eff가 낮고 Δ-Coh가 높습니다.</b></div></section>`:""}
+  <section>
+    <h4>삼중 시간축</h4>
+    <div class="timebar">
+      <div class="lbl"><span>story · 작중 시간</span><span>${sFrom}장 – ${sTo??"열림"}</span></div>
+      <div class="track"><div class="fill story" style="left:${pct(sFrom)}%;width:${(sTo?pct(sTo):100)-pct(sFrom)||1.5}%"></div></div>
+    </div>
+    <div class="timebar">
+      <div class="lbl"><span>discourse · 독자 인지</span><span>${n.reveal}장에 드러남</span></div>
+      <div class="track"><div class="tick" style="left:${pct(n.reveal)}%"></div></div>
+    </div>
+    <div class="timebar">
+      <div class="lbl"><span>transaction · 편집</span><span>r${7+n.id.length%9} · 활성</span></div>
+      <div class="track"><div class="fill" style="left:0;width:100%;background:color-mix(in srgb,var(--muted) 26%,transparent)"></div></div>
+    </div>
+    ${flashback?`<div style="margin-top:8px;font-size:11.5px;color:var(--thread)">↺ story &lt; discourse — 회상으로 뒤늦게 밝혀진 사실입니다.</div>`:""}
+  </section>
+  ${n.pre?`<section><h4>전이 계약 (Pre / Post / Forbid)</h4>
+    <dl class="kv">
+      <dt>Pre</dt><dd>${n.pre.join(", ")||"—"}</dd>
+      <dt>Post</dt><dd>${n.post.join(", ")||"—"}</dd>
+      <dt>Forbid</dt><dd style="color:var(--bad)">${n.forbid.join(", ")||"—"}</dd>
+    </dl>
+    <div style="font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45">같은 연산자가 생성 제약이자 검증 술어로 쓰입니다. Pre가 만족되지 않으면 이 씬은 쓸 수 없습니다.</div></section>`:""}
+  <section>
+    <h4>원문 근거</h4>
+    <div class="prose">${n.prose}</div>
+  </section>
+  <section>
+    <h4>참조 (${n.refs.length})</h4>
+    <div class="reflist">${n.refs.map(([e,id,t,soft])=>
+      `<div class="ref${soft?" soft":""}" ${byId[id]?`data-go="${id}"`:""}><span class="e">${e}</span><span class="t">${t}</span></div>`).join("")}</div>
+  </section>
+  <section>
+    <h4>편집 이력</h4>
+    <div class="prov">${n.prov.map(([w,what,when])=>
+      `<div class="r"><span class="who ${w}">${w==="human"?"사람":w==="agent"?"에이전트":"캐스케이드"}</span><span class="what">${what}</span><time>${when}</time></div>`).join("")}</div>
+  </section>`;
+  insp.querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>{sel=el.dataset.go;draw();});
+}
+
+/* pan / zoom */
+function apply(){world.style.transform=`translate(${off.x}px,${off.y}px) scale(${scale})`;}
+let drag=null;
+stage.addEventListener("pointerdown",e=>{if(e.target.closest(".node,.zoomctl,.legend"))return;
+  drag={x:e.clientX-off.x,y:e.clientY-off.y};stage.classList.add("dragging");stage.setPointerCapture(e.pointerId);});
+stage.addEventListener("pointermove",e=>{if(!drag)return;off={x:e.clientX-drag.x,y:e.clientY-drag.y};apply();});
+stage.addEventListener("pointerup",()=>{drag=null;stage.classList.remove("dragging");});
+stage.addEventListener("wheel",e=>{e.preventDefault();
+  const k=e.deltaY<0?1.09:1/1.09, r=stage.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  off.x=mx-(mx-off.x)*k; off.y=my-(my-off.y)*k; scale=Math.max(.32,Math.min(2.1,scale*k)); apply();},{passive:false});
+document.getElementById("zi").onclick=()=>{scale=Math.min(2.1,scale*1.18);apply();};
+document.getElementById("zo").onclick=()=>{scale=Math.max(.32,scale/1.18);apply();};
+document.getElementById("zr").onclick=fit;
+addEventListener("resize",()=>{ if(!document.getElementById("viewGraph").classList.contains("hidden")) fit(); });
+stage.onclick=e=>{if(!e.target.closest(".node")){}};
+
+/* type filters */
+function buildFilters(){
+  const counts={}; N.forEach(n=>counts[n.kind]=(counts[n.kind]||0)+1);
+  Object.entries(KINDS).forEach(([k,v])=>{
+    const box=document.getElementById("tg"+v.layer[0].toUpperCase()+v.layer.slice(1));
+    const d=document.createElement("div");
+    d.className="tg"; d.dataset.layer=v.layer;
+    d.innerHTML=`<span class="sw"></span>${k} <span style="color:var(--muted);font-size:11px">${v.ko}</span><span class="n">${counts[k]||0}</span>`;
+    d.onclick=()=>{hidden.has(k)?hidden.delete(k):hidden.add(k);d.classList.toggle("off");draw();};
+    box.appendChild(d);
+  });
+}
+
+/* promise board */
+function buildPromise(){
+  const cols=[
+    {t:"hypothetical",ko:"심겼음 · 트리거 미정",c:"var(--bad)",items:[
+      {h:"놋쇠 열쇠",m:"promise/놋쇠열쇠 · 5장 설정",F:"주머니 속 정체불명의 열쇠",T:"미정의 ⚠",P:"미배치",met:[["S-Eff","0.34"],["부채","0.88"]]}]},
+    {t:"eligible",ko:"트리거 발화 · 회수 가능",c:"var(--warn)",items:[
+      {h:"젖은 장갑",m:"promise/젖은장갑 · 3장 설정",F:"등대 안인데 장갑이 젖어 있음",T:"14장 조수 시간표 공개 ✓",P:"미배치",met:[["S-Eff","0.18"],["Δ-Coh","0.71"]]}]},
+    {t:"actualized",ko:"회수 완료",c:"var(--ok)",items:[
+      {h:"1993년 항해일지",m:"promise/항해일지 · 6장 설정",F:"편집장이 옛 일지를 언급",T:"11장 서고 접근 ✓",P:"14장 조수표 발견 ✓",met:[["S-Eff","0.22"],["Δ-Coh","0.83"]]},
+      {h:"오른쪽 소매",m:"promise/오른소매 · 2장 설정",F:"소매가 유독 닳아 있음",T:"9장 왼손잡이 확립 ✓",P:"12장 위장 판명 ✓",met:[["S-Eff","0.11"],["Δ-Coh","0.79"]]}]},
+    {t:"prevented",ko:"의도적 폐기",c:"var(--muted)",items:[
+      {h:"세 번째 목격자",m:"promise/목격자3 · 4장 설정",F:"멀리 서 있던 인영",T:"—",P:"7장에서 착각으로 정리",met:[["처리","레드헤링"]]}]}
+  ];
+  document.getElementById("promiseCols").innerHTML=cols.map(c=>`
+    <div class="col"><header><span class="sw" style="width:9px;height:9px;border-radius:2.5px;background:${c.c}"></span>
+      <h3>${c.t}</h3><span class="n">${c.items.length}</span></header>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:-6px 0 9px">${c.ko}</div>
+      ${c.items.map(i=>`<div class="card" style="--c:${c.c}">
+        <div class="h">${i.h}</div><div class="m">${i.m}</div>
+        <div class="ftp"><b>F</b><span>${i.F}</span><b>T</b><span>${i.T}</span><b>P</b><span>${i.P}</span></div>
+        <div class="met">${i.met.map(([k,v])=>`<span>${k} <b>${v}</b></span>`).join("")}</div>
+      </div>`).join("")}
+    </div>`).join("");
+}
+
+/* timeline */
+function buildTL(){
+  const scenes=[
+    {ch:1,st:1,t:"섬 도착"},{ch:2,st:2,t:"소매"},{ch:3,st:3,t:"첫 심문"},{ch:4,st:4,t:"규칙 설명"},
+    {ch:5,st:5,t:"열쇠"},{ch:6,st:6,t:"일지 언급"},{ch:7,st:7,t:"목격자 정리"},
+    {ch:8,st:-2,t:"회상 · 1993",fb:true},{ch:9,st:8,t:"왼손 확립"},{ch:10,st:9,t:"재심문"},
+    {ch:11,st:10,t:"서고"},{ch:12,st:11,t:"위장 판명"},
+    {ch:13,st:-1,t:"회상 · 사고",fb:true},{ch:14,st:12,t:"조수표"}
+  ];
+  const W=980,H=300,L=52,R=22,T=30,B=48;
+  const xs=i=>L+(W-L-R)*(i/(scenes.length-1));
+  const sMin=-2,sMax=12;
+  const ys=v=>T+(H-T-B)*(1-(v-sMin)/(sMax-sMin));
+  let pts=scenes.map((s,i)=>[xs(i),ys(s.st)]);
+  document.getElementById("tlBox").innerHTML=`
+  <figure style="margin:0">
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="가로축은 독자에게 드러난 장 순서, 세로축은 작중 실제 시간. 8장과 13장에서 선이 아래로 급락하며 회상 구간을 만든다.">
+    <g stroke="currentColor" opacity=".16" stroke-width="1">
+      ${[0,3,6,9,12].map(v=>`<line x1="${L}" y1="${ys(v)}" x2="${W-R}" y2="${ys(v)}"/>`).join("")}
+      <line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}"/>
+    </g>
+    <g font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55" text-anchor="end">
+      ${[0,3,6,9,12].map(v=>`<text x="${L-8}" y="${ys(v)+3.5}">D+${v}</text>`).join("")}
+    </g>
+    <text x="10" y="${T-12}" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">작중 시간 ↑</text>
+    <polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-linejoin="round"/>
+    ${scenes.map((s,i)=>{
+      const [x,y]=pts[i];
+      return `${s.fb?`<line x1="${x}" y1="${y}" x2="${x}" y2="${H-B}" stroke="var(--thread)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>`:""}
+      <circle cx="${x}" cy="${y}" r="${s.fb?5:3.8}" fill="${s.fb?"var(--thread)":"var(--indigo)"}"/>
+      <text x="${x}" y="${H-B+16}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="currentColor" opacity=".55">${s.ch}장</text>
+      ${s.fb?`<text x="${x}" y="${y-11}" text-anchor="middle" font-family="IBM Plex Sans KR, sans-serif" font-size="10.5" fill="var(--thread)">${s.t}</text>`:""}`;
+    }).join("")}
+    <text x="${W-R}" y="${H-10}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">독자 인지 순서 →</text>
+  </svg>
+  <figcaption style="font-size:12px;color:var(--muted);margin-top:12px;line-height:1.55;max-width:66ch">
+    선이 단조 증가하면 시간순 서술입니다. 8장과 13장에서 아래로 꺾인 두 지점이 회상이며,
+    이 꺾임은 <code style="font-family:var(--mono);font-size:11px">story_from &lt; reveal_at</code> 인 노드를 그대로 그린 것입니다 —
+    작가가 따로 “여기는 회상”이라고 태그하지 않아도 두 필드의 불일치에서 자동으로 나옵니다.
+  </figcaption></figure>`;
+}
+
+/* review queue */
+function buildQueue(){
+  document.getElementById("queue").innerHTML=PROPOSALS.map((p,i)=>`
+  <article class="prop">
+    <header>
+      <span class="t">${p.t}</span>
+      <span class="pill ${p.riskCls}">${p.risk}</span>
+      <span class="meta" style="margin-left:auto">${p.model}</span>
+    </header>
+    <div class="why">${p.why}</div>
+    <div class="ops">${p.ops.map(([k,d])=>`<div class="op ${k}"><span class="s">${k==="add"?"+":k==="del"?"−":"~"}</span><span class="d">${d}</span></div>`).join("")}</div>
+    ${p.conflict?`<div class="why" style="color:var(--bad);border-top:1px solid var(--line-soft)">⚠ ${p.conflict}</div>`:""}
+    <div class="readset"><span>read set</span>${p.read.map(r=>`<code>${r}</code>`).join("")}</div>
+    <div class="acts">
+      <button class="btn pri">${p.riskCls==="bad"?"거절하고 22장 원고 확인":"승인"}</button>
+      <button class="btn">영향 미리보기</button>
+      <button class="btn ghost">보류</button>
+    </div>
+  </article>`).join("");
+}
+
+/* tabs */
+const views={graph:"viewGraph",promise:"viewPromise",time:"viewTime",review:"viewReview"};
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  Object.entries(views).forEach(([k,id])=>document.getElementById(id).classList.toggle("hidden",k!==b.dataset.view));
+});
+document.getElementById("asof").oninput=e=>{document.getElementById("asofLbl").textContent=e.target.value+"장";};
+addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();document.getElementById("q").focus();}});
+
+buildFilters(); buildPromise(); buildTL(); buildQueue(); draw();
+requestAnimationFrame(fit);
+</script>

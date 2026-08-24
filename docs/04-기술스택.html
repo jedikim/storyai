@@ -1,0 +1,450 @@
+<title>기술 스택 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#666A7A; --muted-2:#8A8E9E;
+  --thread:#A9333F; --indigo:#365478; --moss:#42684A; --brass:#8C6B28;
+  --thread-bg:#F8EAEC; --indigo-bg:#E9EFF6; --moss-bg:#E9F1EA; --brass-bg:#F7F0DF;
+  --shadow:0 1px 2px rgba(23,26,36,.05), 0 10px 30px rgba(23,26,36,.06);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--thread);outline-offset:3px;border-radius:2px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1280px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:30px 20px 40px 24px;border-right:1px solid var(--line)}
+.doc{padding:32px 46px 110px;min-width:0}
+@media (max-width:960px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:20px 22px 16px}
+  .doc{padding:24px 20px 70px}
+}
+
+/* rail */
+.mk{display:flex;align-items:center;gap:9px;margin-bottom:6px;text-decoration:none;color:inherit}
+.mk b{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.rail .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin:0 0 18px 29px}
+.rail h4{margin:16px 0 6px;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.rail a.d{display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 11px;font-size:12.5px;
+  color:var(--muted);text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail a.d:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail a.d.cur{color:var(--ink);border-left-color:var(--thread);font-weight:600}
+.rail a.d .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);flex:none}
+.rail .toc{margin-top:18px}
+.rail .toc a{display:block;padding:2.5px 0 2.5px 11px;font-size:12px;color:var(--muted);
+  text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail .toc a:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail .toc a .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-right:5px}
+
+/* masthead */
+.mast{margin-bottom:42px}
+.mast .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--thread);font-weight:500;margin-bottom:12px}
+.mast h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.2vw,42px);line-height:1.2;
+  margin:0 0 12px;letter-spacing:-.025em;text-wrap:balance}
+.mast .dek{font-size:16px;color:var(--muted);max-width:62ch;margin:0 0 20px;line-height:1.66;font-weight:300}
+.mast .dek b{color:var(--ink);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-family:var(--mono);font-size:11px;
+  color:var(--muted-2);border-top:1px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+/* type */
+h2{font-family:var(--serif);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin:54px 0 4px;text-wrap:balance;scroll-margin-top:20px}
+h2 .num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--thread);
+  display:block;letter-spacing:.1em;margin-bottom:6px}
+h2+.lede{color:var(--muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;font-weight:300;line-height:1.62}
+h3{font-size:17px;font-weight:600;letter-spacing:-.012em;margin:34px 0 10px;scroll-margin-top:20px}
+h3 .num{font-family:var(--mono);font-size:12px;color:var(--muted-2);font-weight:500;margin-right:8px}
+h4{font-size:13.5px;font-weight:600;margin:22px 0 7px}
+p{margin:0 0 14px;max-width:74ch}
+strong,b{font-weight:600}
+a{color:var(--thread);text-underline-offset:2.5px;text-decoration-thickness:1px}
+ul,ol{margin:0 0 15px;padding-left:22px;max-width:74ch}
+li{margin-bottom:6px}
+li::marker{color:var(--muted-2)}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+blockquote{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;color:var(--muted);max-width:66ch;line-height:1.8}
+
+/* blocks */
+.key{border-left:3px solid var(--thread);background:var(--thread-bg);padding:14px 18px;margin:20px 0;
+  border-radius:0 8px 8px 0;max-width:76ch}
+.key .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:5px}
+.key p{max-width:none}.key p:last-child{margin-bottom:0}
+.note{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:14px 18px;
+  margin:20px 0;font-size:14px;max-width:76ch}
+.note .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:5px}
+.note p{max-width:none}.note p:last-child{margin-bottom:0}
+.note.warn{border-left:3px solid var(--brass);background:var(--brass-bg);border-color:transparent}
+.note.warn .lbl{color:var(--brass)}
+.note.ok{border-left:3px solid var(--moss);background:var(--moss-bg);border-color:transparent}
+.note.ok .lbl{color:var(--moss)}
+
+/* code */
+pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 17px;
+  overflow-x:auto;margin:18px 0;font-family:var(--mono);font-size:12.5px;line-height:1.68}
+pre code{background:none;border:none;padding:0;white-space:pre;font-size:inherit}
+pre .c{color:var(--muted-2)} pre .k{color:var(--indigo);font-weight:500}
+pre .s{color:var(--moss)} pre .t{color:var(--thread)}
+.codehead{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted-2);margin:20px 0 -10px;font-weight:600}
+
+/* tables */
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.55}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);font-weight:600;
+  background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap;font-size:11.5px}
+.nm{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.y{color:var(--moss);font-weight:500} td.n{color:var(--thread);font-weight:500}
+
+/* figures */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:20px 22px 16px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.6;max-width:74ch;
+  padding-top:12px;border-top:1px solid var(--line-soft)}
+figcaption b{color:var(--ink);font-weight:500}
+figure .fnum{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:10px}
+
+/* components */
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-family:var(--mono);
+  font-weight:500;vertical-align:middle}
+.pill.dev{background:var(--thread-bg);color:var(--thread)}
+.pill.evt{background:var(--indigo-bg);color:var(--indigo)}
+.pill.sub{background:var(--moss-bg);color:var(--moss)}
+.pill.w{background:var(--brass-bg);color:var(--brass)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin:20px 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
+.card h5{margin:0 0 6px;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.card p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.62;max-width:none}
+.card p+p{margin-top:8px}
+.card.acc{border-left:3px solid var(--thread)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:22px 0}
+.stat{background:var(--surface);padding:14px 16px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.stat .src{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+.tool{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin:12px 0;overflow:hidden}
+.tool>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);flex-wrap:wrap}
+.tool>header .tn{font-family:var(--mono);font-size:13px;font-weight:600}
+.tool>header .ro{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
+  background:var(--moss-bg);color:var(--moss);font-weight:500}
+.tool>header .rw{background:var(--brass-bg);color:var(--brass)}
+.tool>header .d{font-size:12.5px;color:var(--muted);margin-left:auto}
+.tool .body{padding:11px 14px}
+.tool pre{margin:0 0 9px;background:var(--paper);font-size:11.8px}
+.tool p{font-size:13px;color:var(--muted);margin:0;max-width:none;line-height:1.6}
+.rowlink{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;
+  text-decoration:none;color:var(--ink);margin:6px 8px 6px 0}
+.rowlink:hover{border-color:var(--thread)}
+.rowlink .a{color:var(--thread)}
+.refs{font-size:12.5px;line-height:1.7;column-count:2;column-gap:34px}
+@media (max-width:800px){.refs{column-count:1}}
+.refs div{break-inside:avoid;margin-bottom:7px;color:var(--muted)}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{border-bottom-color:var(--thread)}
+.refs .tag{font-family:var(--mono);font-size:10px;color:var(--thread);margin-right:5px}
+.trail{display:flex;gap:10px;flex-wrap:wrap;margin-top:60px;padding-top:22px;border-top:1px solid var(--line)}
+.trail a{flex:1;min-width:220px;text-decoration:none;color:inherit;border:1px solid var(--line);
+  border-radius:9px;padding:12px 15px;background:var(--surface)}
+.trail a:hover{border-color:var(--thread)}
+.trail .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.trail .t{font-size:14px;font-weight:600;margin-top:3px}
+</style>
+<div class="wrap">
+<nav class="rail">
+<a class="mk" href="index.html"><svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M3 2v20M17 2v20" stroke="currentColor" stroke-width="1.2" opacity=".3"/><path d="M3 7c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none"/><path d="M3 15c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none" opacity=".45"/></svg><b>storyai</b></a>
+<p class="sub">설계 문서 세트 v1</p>
+<h4>문서</h4>
+<a class="d" href="index.html"><span class="n">·</span><span>문서 허브</span></a>
+<a class="d" href="01-기획서.html"><span class="n">01</span><span>기획서</span></a>
+<a class="d" href="02-설계서.html"><span class="n">02</span><span>설계서</span></a>
+<a class="d" href="03-개발계획서.html"><span class="n">03</span><span>개발계획서</span></a>
+<a class="d cur" href="04-기술스택.html"><span class="n">04</span><span>기술 스택</span></a>
+<a class="d" href="05-구조도.html"><span class="n">05</span><span>구조도</span></a>
+<a class="d" href="06-UI설계.html"><span class="n">06</span><span>UI 설계</span></a>
+<a class="d" href="07-UI목업.html"><span class="n">07</span><span>UI 목업</span></a>
+<div class="toc"><h4>이 문서</h4><a href="#stack"><span class="n">1</span>선택과 근거</a>
+<a href="#rejected"><span class="n">2</span>거부한 선택지</a>
+<a href="#hostlimits"><span class="n">3</span>호스트 제약 — 실측치</a>
+<a href="#deps"><span class="n">4</span>의존성 목록</a>
+<a href="#layout"><span class="n">5</span>저장소 레이아웃</a>
+<a href="#refs"><span class="n">6</span>참고문헌</a></div>
+</nav>
+<main class="doc">
+<header class="mast">
+  <div class="eyebrow">storyai · 04 기술 스택 · 2026-08-24</div>
+  <h1>기술 스택</h1>
+<p class="dek">무엇을 쓰고 무엇을 거부했는지, 그리고 왜. <b>2026년 8월 기준으로 라이선스와 생존 여부를 직접 확인한 결과</b>입니다 — 이 표가 이 문서에서 가장 실용적인 부분일 수 있습니다.</p>
+<div class="meta">
+  <span>대상 <b>개발자</b></span>
+  <span>확인 시점 <b>2026-08-24</b></span>
+  <span>원칙 <b>죽지 않는 것을 고른다</b></span>
+</div>
+
+</header>
+
+
+<h2 id="stack"><span class="num">1</span>선택과 근거</h2>
+<div class="tbl">
+<table>
+<thead><tr><th>층</th><th>선택</th><th>라이선스</th><th>근거</th></tr></thead>
+<tbody>
+<tr><td>MCP 서버</td><td><b>Python 3.12 + FastMCP</b></td><td class="y">MIT</td><td>기존 역량과 일치. 추출 파이프라인이 어차피 파이썬</td></tr>
+<tr><td>저장소</td><td><b>SQLite</b></td><td class="y">퍼블릭 도메인</td><td><b>절대 아카이브되지 않음.</b> 단일 파일 = 백업·git·동기화가 공짜</td></tr>
+<tr><td>전문 검색</td><td><b>FTS5</b> (SQLite 내장)</td><td class="y">퍼블릭 도메인</td><td>추가 의존성 0. BM25가 macro 55.8%의 강한 베이스라인</td></tr>
+<tr><td>벡터 검색</td><td><b>sqlite-vec</b></td><td class="y">MIT / Apache-2.0</td><td>같은 파일 안에 들어감. ⚠ 아직 pre-1.0 — 유일한 리스크 부품</td></tr>
+<tr><td>순회</td><td><b>재귀 CTE</b>, 인터페이스 뒤에 은닉</td><td>—</td><td>210만 노드 depth-5가 0.3ms. 나중에 교체 가능하도록 추상화</td></tr>
+<tr><td>원고</td><td><b>마크다운 + git</b></td><td>—</td><td>그래프는 인덱스, 원문은 파일. 요약이 원문을 대체하면 안 됨</td></tr>
+<tr><td>임베딩</td><td>로컬 모델 (bge-m3 계열)</td><td class="y">MIT 계열</td><td>개인 도구 단계에서 API 왕복 불필요</td></tr>
+<tr><td>UI 백엔드</td><td><b>FastAPI</b> — 같은 코어 재사용</td><td class="y">MIT</td><td>TheRoad-I1 스택과 동일해 재사용 가능</td></tr>
+<tr><td>UI 프레임</td><td><b>React + Vite + TypeScript</b></td><td class="y">MIT</td><td>—</td></tr>
+<tr><td>캔버스</td><td><b>React Flow (xyflow)</b></td><td class="y">MIT</td><td>서브플로우 네이티브, 노드가 곧 React 컴포넌트</td></tr>
+<tr><td>레이아웃</td><td><b>elkjs</b></td><td class="y">EPL-2.0</td><td>중첩 compound를 지원하는 유일한 실용 계층 레이아웃</td></tr>
+<tr><td>장문 협업</td><td>(P4 이후) Yjs + ProseMirror</td><td class="y">MIT</td><td>노드 안의 산문 필드에만 국소 도입</td></tr>
+<tr><td>문서 빌드</td><td>Python 표준 라이브러리만</td><td>—</td><td><code>build/build.py</code>. 의존성 0</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key">
+  <div class="lbl">전체 스택에 죽을 수 있는 부품이 하나뿐입니다</div>
+  <p><code>sqlite-vec</code>만 pre-1.0이고, 최악의 경우 <b>벡터 검색만 빠집니다</b> — BM25와 그래프 순회는 그대로 돕니다. 나머지는 전부 성숙했거나 퍼블릭 도메인입니다.</p>
+</div>
+
+<h2 id="rejected"><span class="num">2</span>거부한 선택지</h2>
+<p class="lede">2026년 8월에 직접 확인한 상태입니다. <b>이 표가 이 문서의 존재 이유일 수 있습니다.</b></p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>후보</th><th>확인된 상태</th><th>판정</th></tr></thead>
+<tbody>
+<tr><td><b>Kuzu</b><br><span class="nm">임베디드 그래프 DB</span></td><td class="n">2025-10-10 아카이브. 팀이 Apple에 인수(2026-02 발표). 저장소 읽기 전용</td><td class="n"><b>절대 쓰지 말 것.</b> 5년 4,000★짜리 프로젝트도 하루아침에 멈춥니다</td></tr>
+<tr><td>LadybugDB<br><span class="nm">Kuzu 후속 포크</span></td><td>MIT, 활발, Cypher + 벡터 + WASM</td><td>매력적이지만 <b>사실상 단일 메인테이너의 0.x 포크</b>. 폴백 경로를 유지한 채로만</td></tr>
+<tr><td>CozoDB</td><td class="n">2024-12 이후 커밋 없음</td><td class="n">휴면</td></tr>
+<tr><td>SurrealDB</td><td class="n">BUSL 1.1 — 오픈소스 아님</td><td>데스크톱 임베드는 허용되지만 라이선스 리스크</td></tr>
+<tr><td>FalkorDB</td><td class="n">SSPL</td><td class="n">비공개 제품에 사실상 사용 불가</td></tr>
+<tr><td>Memgraph / TuringDB</td><td class="n">BSL 1.1 + 별도 엔터프라이즈 라이선스</td><td class="n">제외</td></tr>
+<tr><td>TerminusDB</td><td class="n">회사가 피벗(2024-12 메인테이너 발언). 스튜어드십 이전, 2025-06 이후 릴리스 없음</td><td class="n">git 같은 버전 관리는 매력적이나 지속성 리스크</td></tr>
+<tr><td>Dolt / DoltLite</td><td>Apache-2.0, 건강함. <b>임베디드 API가 Go 전용</b></td><td>“결말 바꾸기 전 원고 보여줘”가 공짜지만 <b>스택 언어를 DB가 결정</b>해버림. 벡터 검색 없음</td></tr>
+<tr><td>XTDB v2</td><td>MPL-2.0, 2.0 GA. 모든 테이블이 bitemporal</td><td>JVM 서버라 local-first와 충돌. <b>스키마는 베낄 가치가 큼</b></td></tr>
+<tr><td>DuckPGQ</td><td class="n">커뮤니티 확장, 연구 진행 중</td><td class="n">시스템 오브 레코드로는 미성숙</td></tr>
+<tr><td>Neo4j</td><td>GPLv3(CE) / 상용. 임베디드는 JVM 전용</td><td class="n">local-first와 충돌</td></tr>
+<tr><td><b>tldraw</b><br><span class="nm">캔버스</span></td><td class="n">독점 라이선스. 프로덕션에 키 필요, hobby 티어는 워터마크</td><td class="n"><b>제외.</b> local-first 제품 전제와 정면 충돌</td></tr>
+<tr><td>Rete.js scopes / structures</td><td class="n">중첩·순회 플러그인이 CC-BY-NC-SA (비상업)</td><td class="n">코어는 MIT지만 필요한 플러그인이 비상업</td></tr>
+<tr><td>Excalidraw</td><td class="y">MIT, 활발</td><td>타입 노드 표현이 어려움 — 요소 분류가 닫혀 있음</td></tr>
+<tr><td>Sigma.js</td><td class="y">MIT, 1만 노드 처리</td><td>WebGL이라 <b>HTML 노드를 포기</b>해야 함. 리치 카드 노드에 부적합</td></tr>
+<tr><td><b>Codex CLI 포크</b></td><td class="n">월 ~900 커밋(하루 30). 안정적 out-of-tree API 없음. 워크스페이스 크레이트 <code>version="0.0.0"</code> 미발행, 플러그인 RPC에 “production에서 호출 금지” 표기</td><td class="n"><b>명확히 반대.</b> 포크 16,000개 중 유지되는 배포판이 사실상 없음</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <div class="lbl">이 표의 교훈</div>
+  <p>임베디드 그래프 DB 카테고리는 <b>2025년에 최선의 선택지를 잃고 아직 회복하지 못했습니다.</b> 그래서 SQLite로 갑니다 — 표현력은 떨어지지만 <b>죽지 않습니다.</b> 순회 로직을 인터페이스 뒤에 숨겨두면, Cypher가 정말 병목임이 증명된 뒤에 옮겨도 늦지 않습니다.</p>
+</div>
+
+<h2 id="hostlimits"><span class="num">3</span>호스트 제약 — 실측치</h2>
+<p class="lede">설계는 취향이 아니라 이 숫자에서 나옵니다.</p>
+<div class="tbl">
+<table>
+<thead><tr><th>항목</th><th>Claude Code</th><th>Codex CLI</th><th>대응</th></tr></thead>
+<tbody>
+<tr><td>언어 / 라이선스</td><td>TS · 비공개</td><td>Rust · Apache-2.0</td><td>—</td></tr>
+<tr><td>툴 출력 상한</td><td class="nm">25,000 토큰</td><td>미확인</td><td>양쪽 <b>8,000 목표</b>로 설계</td></tr>
+<tr><td>툴 설명 절단</td><td class="nm">2 KB</td><td>미확인</td><td>툴당 500토큰 예산</td></tr>
+<tr><td>툴 개수 열화</td><td colspan="2" class="nm">30–50개 초과 (Anthropic 공식)</td><td>15개로 제한</td></tr>
+<tr><td>MCP tools</td><td class="y">지원</td><td class="y">지원</td><td>진입점은 전부 여기</td></tr>
+<tr><td>MCP resources</td><td class="y">지원</td><td class="y">지원</td><td>보조로 사용 가능</td></tr>
+<tr><td>MCP elicitation</td><td class="y">지원</td><td class="y">지원</td><td>필요 시 사용</td></tr>
+<tr><td><b>MCP prompts</b></td><td class="y">지원</td><td class="n"><b>미구현</b></td><td><b>쓰지 않는다</b></td></tr>
+<tr><td>Sampling / Roots / Logging</td><td colspan="2" class="n">2026-07-28에 deprecated</td><td>의존 금지. 로그는 stderr</td></tr>
+<tr><td>스킬</td><td class="y">Agent Skills + 확장 필드</td><td class="y">Agent Skills, <b>규격 6필드만 파싱</b></td><td>규격 6필드만 사용</td></tr>
+<tr><td>스킬 목록 예산</td><td class="nm">description 1,536자 절단</td><td class="nm">컨텍스트 2% 또는 8,000자</td><td>1,400자 이하</td></tr>
+<tr><td>커스텀 슬래시 커맨드</td><td class="y">있음</td><td class="n">제거됨</td><td>워크플로는 스킬로만</td></tr>
+<tr><td>훅</td><td class="y">~9 이벤트, command만</td><td class="y"><b>11 이벤트, MCP 훅 지원</b></td><td>둘 다 같은 스크립트 호출</td></tr>
+<tr><td>플러그인 매니페스트</td><td><code>.claude-plugin/plugin.json</code></td><td>루트 <code>plugin.json</code> → <code>.claude-plugin/</code> 폴백</td><td><b>병기</b></td></tr>
+<tr><td>LSP 서버 번들</td><td class="y"><code>.lsp.json</code></td><td class="n">없음</td><td>CC 전용 선택 기능</td></tr>
+<tr><td>프로젝트 지침</td><td><code>CLAUDE.md</code> + <code>AGENTS.md</code></td><td><code>AGENTS.md</code> (32 KiB)</td><td><code>AGENTS.md</code> 단일 소스</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="deps"><span class="num">4</span>의존성 목록</h2>
+<div class="codehead">server/requirements.txt (예정)</div>
+<pre><code>fastmcp&gt;=2.0          <span class="c"># MCP 서버 프레임워크 · MIT</span>
+pydantic&gt;=2.7         <span class="c"># 스키마 검증 · MIT</span>
+sqlite-vec&gt;=0.1       <span class="c"># 벡터 인덱스 · MIT/Apache-2.0 · ⚠ pre-1.0</span>
+sentence-transformers <span class="c"># 로컬 임베딩 · Apache-2.0</span>
+<span class="c"># SQLite · FTS5 · json1 은 표준 라이브러리에 포함</span>
+
+<span class="c"># P4 이후</span>
+fastapi&gt;=0.115        <span class="c"># REST · MIT</span>
+uvicorn               <span class="c"># ASGI · BSD</span></code></pre>
+
+<div class="codehead">web/package.json 핵심 (예정)</div>
+<pre><code>"@xyflow/react"   <span class="c">// 캔버스 · MIT</span>
+"elkjs"           <span class="c">// 계층 레이아웃 · EPL-2.0</span>
+"react" "vite" "typescript"
+
+<span class="c">// 나중에, 노드 안 산문 필드에만</span>
+"yjs" "y-prosemirror"</code></pre>
+
+<h3><span class="num">4.1</span>버전 고정 정책</h3>
+<ul>
+  <li><b>pre-1.0 부품은 정확한 버전으로 고정</b>합니다. 현재는 <code>sqlite-vec</code> 하나뿐입니다.</li>
+  <li>메이저 성숙 부품은 caret 범위로 둡니다.</li>
+  <li><b>순회 계층은 인터페이스 뒤에</b> — <code>core/traverse.py</code>가 유일한 SQL 접점이어야 하고, 저장소를 바꾸게 되면 이 파일만 바뀝니다.</li>
+  <li><b>임베딩 모델은 노드에 기록</b>합니다. 모델을 바꾸면 인덱스를 재생성해야 하므로, 어떤 모델로 만든 벡터인지 알아야 합니다.</li>
+</ul>
+
+<h2 id="layout"><span class="num">5</span>저장소 레이아웃</h2>
+<pre><code>storyai/
+├── manuscript/                 <span class="c"># 원문 — 진실의 원천, git 관리</span>
+│   ├── A1/ch01.md  ch02.md …
+│   └── A2/…
+├── bible/                      <span class="c"># 사람이 직접 쓰는 정본 — 그래프로 인덱싱됨</span>
+│   ├── rules.md                <span class="c">#   세계 규칙 (locked)</span>
+│   └── characters/…
+├── store/
+│   ├── story.db                <span class="c"># SQLite — 그래프 + op 로그 + FTS + 벡터</span>
+│   └── backups/                <span class="c">#   커밋 전 스냅샷</span>
+├── spec/                       <span class="c"># ★ 문서와 구현의 접점</span>
+│   ├── ontology.json  tools.json  rules.json  schema.sql
+├── server/                     <span class="c"># MCP 서버 (Python)</span>
+│   ├── tools/                  <span class="c">#   15개 툴, 한 파일씩</span>
+│   ├── core/                   <span class="c">#   ★ 자산 — UI와 공유</span>
+│   │   ├── ontology.py  address.py  traverse.py  budget.py
+│   │   ├── ops.py  conflict.py  provenance.py
+│   │   ├── rules/              <span class="c">#     진단 규칙 구현</span>
+│   │   └── cascade.py
+│   └── extract/                <span class="c">#   원고 → 그래프</span>
+├── api/                        <span class="c"># FastAPI — UI용, core 재사용</span>
+├── web/                        <span class="c"># React 캔버스</span>
+├── docs/                       <span class="c"># 이 문서 세트</span>
+├── build/                      <span class="c"># 문서 빌더</span>
+├── prompts/v1/                 <span class="c"># 버전 디렉터리, 덮어쓰기 금지</span>
+├── evals/injected/             <span class="c"># 통제 모순 주입 케이스</span>
+├── skills/  hooks/             <span class="c"># 호스트 패키지</span>
+├── plugin.json  .claude-plugin/plugin.json  .mcp.json
+├── AGENTS.md  CLAUDE.md  README.md</code></pre>
+
+<div class="key">
+  <div class="lbl"><code>server/core/</code>가 자산입니다</div>
+  <p>MCP 툴도 REST 핸들러도 이걸 감쌀 뿐이고, 나중에 자체 에이전트 루프를 얹어도 이건 그대로 남습니다. <b>로직을 핸들러에 넣지 마세요.</b></p>
+</div>
+
+<h2 id="refs"><span class="num">6</span>참고문헌</h2>
+<p class="lede">이 문서 세트 전체에서 인용한 것입니다. arXiv ID는 초록 페이지를 확인했습니다.</p>
+
+<h4>서사 생성 · 일관성</h4>
+<div class="refs">
+<div><span class="tag">CED</span><a href="https://arxiv.org/abs/2603.05890">Lost in Stories: Consistency Bugs in Long Story Generation</a> · arXiv:2603.05890 · Findings ACL 2026</div>
+<div><span class="tag">스키마</span><a href="https://arxiv.org/abs/2607.05577">Narrative World Model</a> · arXiv:2607.05577 · PocketFM</div>
+<div><span class="tag">복선</span><a href="https://arxiv.org/abs/2601.07033">Codified Foreshadowing-Payoff Generation</a> · arXiv:2601.07033 · UCSD</div>
+<div><span class="tag">전이계약</span><a href="https://arxiv.org/abs/2608.05169">ConWriter</a> · arXiv:2608.05169</div>
+<div><span class="tag">가시성</span><a href="https://arxiv.org/abs/2606.25632">ReverieMem: Perspective-Bounded Memory</a> · arXiv:2606.25632</div>
+<div><span class="tag">그래프 계획</span><a href="https://arxiv.org/abs/2604.21253">PLOTTER</a> · arXiv:2604.21253 · Findings ACL 2026</div>
+<div><span class="tag">검증</span><a href="https://arxiv.org/abs/2607.00918">MAGNET + ATLAS</a> · arXiv:2607.00918</div>
+<div><span class="tag">계층</span><a href="https://arxiv.org/abs/2606.20900">Storyline Trees</a> · arXiv:2606.20900 · Edinburgh</div>
+<div><span class="tag">플래시백</span><a href="https://arxiv.org/abs/2506.16445">StoryWriter</a> · arXiv:2506.16445 · CIKM 2025</div>
+<div><span class="tag">플롯홀</span><a href="https://arxiv.org/abs/2504.11900">Finding Flawed Fictions</a> · arXiv:2504.11900 · CoLM 2025</div>
+<div><span class="tag">페어플레이</span><a href="https://arxiv.org/abs/2507.13841">Fair Play in Narrative</a> · arXiv:2507.13841</div>
+<div><span class="tag">긴장</span><a href="https://arxiv.org/abs/2604.09854">Spoiler Alert: Narrative Forecasting</a> · arXiv:2604.09854</div>
+<div><span class="tag">상호참조</span><a href="https://arxiv.org/abs/2507.12075">BookCoref</a> · arXiv:2507.12075 · Sapienza</div>
+<div><span class="tag">사용자연구</span><a href="https://arxiv.org/abs/2505.24803">Guiding Generative Storytelling with KGs</a> · IJHCI</div>
+<div><span class="tag">평가</span><a href="https://arxiv.org/abs/2608.15654">WSE-bench</a> · arXiv:2608.15654</div>
+<div><span class="tag">보상모델</span><a href="https://arxiv.org/abs/2605.04831">StoryRMB / StoryReward</a> · arXiv:2605.04831</div>
+<div><span class="tag">약속보존</span><a href="https://arxiv.org/abs/2608.08160">NCP-Bench</a> · arXiv:2608.08160 · ICML 2026</div>
+<div><span class="tag">온톨로지</span><a href="http://www.cs.columbia.edu/~delson/pubs/LREC2012-Elson.pdf">Story Intention Graph</a> · Elson, LREC 2012</div>
+<div><span class="tag">서베이</span><a href="https://arxiv.org/abs/2602.15851">Narrative Theory-Driven LLM Methods: A Survey</a> · arXiv:2602.15851</div>
+</div>
+
+<h4>에이전트 메모리 · 컨텍스트</h4>
+<div class="refs">
+<div><span class="tag">현실점검</span><a href="https://arxiv.org/abs/2606.24775">Are We Ready For An Agent-Native Memory System?</a> · arXiv:2606.24775</div>
+<div><span class="tag">비용</span><a href="https://arxiv.org/abs/2606.06448">Agent Memory: Characterization and System Implications</a> · arXiv:2606.06448 · Stanford</div>
+<div><span class="tag">이중시간</span><a href="https://arxiv.org/abs/2501.13956">Zep / Graphiti</a> · arXiv:2501.13956</div>
+<div><span class="tag">쓰기계약</span><a href="https://arxiv.org/abs/2504.19413">Mem0 / Mem0ᵍ</a> · arXiv:2504.19413</div>
+<div><span class="tag">축분리</span><a href="https://aclanthology.org/2026.acl-long.1709/">MAGMA</a> · arXiv:2601.03236 · ACL 2026</div>
+<div><span class="tag">중복</span><a href="https://arxiv.org/abs/2602.02007">xMemory</a> · arXiv:2602.02007 · KCL</div>
+<div><span class="tag">오프라인</span><a href="https://arxiv.org/abs/2510.18866">LightMem</a> · arXiv:2510.18866 · ZJU</div>
+<div><span class="tag">최신성</span><a href="https://arxiv.org/abs/2606.01435">Reliable Post-Retrieval Assembly</a> · arXiv:2606.01435</div>
+<div><span class="tag">ToM</span><a href="https://arxiv.org/abs/2603.14646">Dynamic Theory of Mind as a Temporal Memory Problem</a> · arXiv:2603.14646</div>
+<div><span class="tag">능동사용</span><a href="https://www.arxiv.org/abs/2601.19935">Mem2ActBench</a> · arXiv:2601.19935</div>
+<div><span class="tag">MCP선례</span><a href="https://arxiv.org/abs/2603.27277">Codebase-Memory: Tree-Sitter KG via MCP</a> · arXiv:2603.27277</div>
+<div><span class="tag">툴개수</span><a href="https://arxiv.org/abs/2605.24660">How Many Tools Should an LLM Agent See?</a> · arXiv:2605.24660 · Meta</div>
+</div>
+
+<h4>버전관리 · 전파 · 플랫폼</h4>
+<div class="refs">
+<div><span class="tag">파급</span><a href="https://arxiv.org/abs/2307.12976">RippleEdits</a> · TACL 2024</div>
+<div><span class="tag">거리감쇠</span><a href="https://arxiv.org/html/2512.04144">RippleBench</a> · arXiv:2512.04144</div>
+<div><span class="tag">연쇄</span><a href="https://arxiv.org/abs/2606.07937">Hallucination Cascade</a> · arXiv:2606.07937</div>
+<div><span class="tag">증분계산</span><a href="https://salsa-rs.github.io/salsa/reference/algorithm.html">Salsa red-green algorithm</a></div>
+<div><span class="tag">무효화</span><a href="https://buck2.build/docs/insights_and_knowledge/modern_dice/">Buck2 DICE</a></div>
+<div><span class="tag">재계산</span><a href="https://learn.microsoft.com/en-us/office/client-developer/excel/excel-recalculation">Excel recalculation</a> · Microsoft</div>
+<div><span class="tag">트리이동</span><a href="https://martin.kleppmann.com/2021/10/07/crdt-tree-move-operation.html">A highly-available move operation for replicated trees</a> · Kleppmann</div>
+<div><span class="tag">3-way</span><a href="https://www.dolthub.com/blog/2020-07-15-three-way-merge/">Dolt cell-level three-way merge</a></div>
+<div><span class="tag">프로버넌스</span><a href="https://www.w3.org/TR/prov-o/">W3C PROV-O</a></div>
+<div><span class="tag">교훈</span><a href="https://phabricator.wikimedia.org/T136799">Wikidata T136799</a> — statement 단위 프로버넌스 10년째 미해결</div>
+<div><span class="tag">diff UI</span><a href="https://www.inkandswitch.com/patchwork/notebook/2024-version-control/10/">Ink &amp; Switch, Patchwork</a></div>
+<div><span class="tag">HUD</span><a href="https://www.geoffreylitt.com/2025/07/27/enough-ai-copilots-we-need-ai-huds">Enough AI copilots! We need AI HUDs</a> · Litt</div>
+<div><span class="tag">MCP</span><a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">MCP 2026-07-28 changelog</a></div>
+<div><span class="tag">한도</span><a href="https://docs.claude.com/en/docs/claude-code/mcp">Claude Code MCP 문서</a> — 25,000 토큰 상한</div>
+<div><span class="tag">어노테이션</span><a href="https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/">Tool Annotations as Risk Vocabulary</a></div>
+<div><span class="tag">툴설계</span><a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Writing effective tools for AI agents</a> · Anthropic</div>
+<div><span class="tag">내비게이션</span><a href="https://oraios.github.io/serena/01-about/035_tools.html">Serena 툴 목록</a></div>
+<div><span class="tag">심볼</span><a href="https://github.com/sourcegraph/scip/blob/main/scip.proto">SCIP 심볼 문법</a></div>
+<div><span class="tag">표준</span><a href="https://agentskills.io">Agent Skills</a> · <a href="https://agents.md/">AGENTS.md</a> · <a href="https://github.com/agentplugins/agent-plugins-spec">Agent Plugins</a></div>
+<div><span class="tag">아카이브</span><a href="https://github.com/kuzudb/kuzu">Kuzu</a> — 2025-10-10 아카이브</div>
+<div><span class="tag">라이선스</span><a href="https://tldraw.dev/community/license">tldraw 라이선스</a> — 독점</div>
+<div><span class="tag">캔버스</span><a href="https://github.com/xyflow/xyflow">React Flow</a> · <a href="https://github.com/kieler/elkjs">elkjs</a> · <a href="https://github.com/asg017/sqlite-vec">sqlite-vec</a></div>
+</div>
+
+<div class="trail"><a href="03-개발계획서.html"><div class="k">← 이전</div><div class="t">개발계획서</div></a><a href="05-구조도.html"><div class="k">다음 →</div><div class="t">구조도</div></a></div>
+</main>
+</div>

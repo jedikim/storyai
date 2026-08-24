@@ -1,0 +1,115 @@
+{
+  "$comment": "storyai 서사 그래프 온톨로지. 구현이 직접 읽습니다. 문서: docs/02-설계서.html#ontology",
+  "version": "1.0.0",
+  "layers": {
+    "substance": { "label": "원소", "desc": "세계에 존재하는 것", "color": "--moss" },
+    "event":     { "label": "사건", "desc": "일어나는 것",       "color": "--indigo" },
+    "device":    { "label": "서사 장치", "desc": "작가가 배치하는 것", "color": "--thread" }
+  },
+  "kinds": [
+    { "name": "Character", "layer": "substance", "label": "인물", "p0": true,
+      "props": ["역할", "주손", "나이", "상태", "말투"] },
+    { "name": "Location",  "layer": "substance", "label": "장소", "p0": true,
+      "props": ["유형", "접근성", "분위기"] },
+    { "name": "Object",    "layer": "substance", "label": "소품", "p0": true,
+      "props": ["소유자", "상태", "재질"] },
+    { "name": "Faction",   "layer": "substance", "label": "세력", "p0": false,
+      "props": ["규모", "목적"] },
+    { "name": "Rule",      "layer": "substance", "label": "세계 규칙", "p0": true,
+      "props": ["범위", "효력"], "default_locked": true },
+    { "name": "Concept",   "layer": "substance", "label": "용어", "p0": false,
+      "props": ["정의"] },
+
+    { "name": "Scene",     "layer": "event", "label": "씬", "p0": true, "atomic": true,
+      "props": ["장소", "참여", "story_time", "word_count"],
+      "contract": ["pre", "post", "forbid"] },
+    { "name": "Event",     "layer": "event", "label": "작중 사건", "p0": false, "props": [] },
+    { "name": "Beat",      "layer": "event", "label": "극적 비트", "p0": false,
+      "props": ["기능", "withheld_information"] },
+    { "name": "Chapter",   "layer": "event", "label": "장", "p0": false, "props": [] },
+    { "name": "Act",       "layer": "event", "label": "막", "p0": false, "props": [] },
+
+    { "name": "Promise",   "layer": "device", "label": "복선", "p0": true,
+      "props": ["F", "T", "P", "status", "foreshadow_type", "debt", "s_eff", "delta_coh"],
+      "status_enum": ["hypothetical", "eligible", "actualized", "prevented"],
+      "foreshadow_type_enum": ["object", "event", "rule"] },
+    { "name": "Twist",     "layer": "device", "label": "반전", "p0": false,
+      "props": ["예정", "전제", "status"] },
+    { "name": "Reveal",    "layer": "device", "label": "폭로", "p0": false,
+      "props": ["대상 사실"] },
+    { "name": "Fact",      "layer": "device", "label": "사실", "p0": false,
+      "props": ["subject", "predicate", "object", "cause"],
+      "visibility": true },
+    { "name": "Thread",    "layer": "device", "label": "플롯라인", "p0": false, "props": [] },
+    { "name": "Arc",       "layer": "device", "label": "인물 아크", "p0": false, "props": [] },
+
+    { "name": "Session",   "layer": "device", "label": "세션", "p0": true, "internal": true,
+      "props": ["host", "model", "intent", "did", "open_threads", "next", "touched"] }
+  ],
+  "edges": [
+    { "rel": "contains",         "group": "structure",  "hard": true, "constraint": "dag" },
+    { "rel": "extends",          "group": "structure",  "hard": true, "constraint": "acyclic" },
+    { "rel": "member_of",        "group": "structure",  "hard": true },
+    { "rel": "alias_of",         "group": "structure",  "hard": true },
+
+    { "rel": "performs",         "group": "event_role", "hard": true, "src": "Character", "dst": "Scene" },
+    { "rel": "undergoes",        "group": "event_role", "hard": true },
+    { "rel": "witnesses",        "group": "event_role", "hard": true },
+    { "rel": "focalizes",        "group": "event_role", "hard": true, "max_per_dst": 1 },
+
+    { "rel": "occurs_at",        "group": "spatiotemporal", "hard": true, "src": "Scene", "dst": "Location" },
+    { "rel": "present_at",       "group": "spatiotemporal", "hard": true, "interval": true },
+
+    { "rel": "causes",           "group": "causal", "hard": true, "constraint": "dag" },
+    { "rel": "enables",          "group": "causal", "hard": true },
+    { "rel": "prevents",         "group": "causal", "hard": true },
+    { "rel": "precedes",         "group": "causal", "hard": true },
+
+    { "rel": "plants",           "group": "device", "hard": true, "src": "Scene",   "dst": "Promise" },
+    { "rel": "requires_trigger", "group": "device", "hard": true, "src": "Promise", "dst": "Scene" },
+    { "rel": "pays_off",         "group": "device", "hard": true, "src": "Scene",   "dst": "Promise",
+      "check": "pays_off.story_from >= requires_trigger.story_from" },
+    { "rel": "reveals",          "group": "device", "hard": true, "mutates": "visibility" },
+    { "rel": "depends_on",       "group": "device", "hard": true },
+    { "rel": "contradicts",      "group": "device", "hard": true, "generated_by": "diagnostic",
+      "resolvable_by": "human" },
+
+    { "rel": "kin_of",           "group": "social", "hard": true, "interval": true, "polarity": true },
+    { "rel": "ally_of",          "group": "social", "hard": true, "interval": true, "polarity": true },
+    { "rel": "hostile_to",       "group": "social", "hard": true, "interval": true, "polarity": true },
+
+    { "rel": "owns",             "group": "object", "hard": true, "interval": true },
+    { "rel": "uses",             "group": "object", "hard": true, "interval": true },
+    { "rel": "part_of",          "group": "object", "hard": true },
+
+    { "rel": "grounded_in",      "group": "evidence", "hard": true, "dst": "span" },
+    { "rel": "mentioned_in",     "group": "evidence", "hard": false,
+      "$comment": "soft — 보고만, 절대 자동 편집 금지" }
+  ],
+  "time_axes": {
+    "story":       { "fields": ["story_from", "story_to"], "unit": "chapter",
+                     "desc": "작중 언제 참인가" },
+    "discourse":   { "fields": ["reveal_at"], "unit": "chapter",
+                     "desc": "독자에게 언제 드러났는가. story_from보다 크면 회상" },
+    "transaction": { "fields": ["tx_from", "tx_to"], "unit": "iso8601",
+                     "desc": "DB가 언제 그렇게 믿었는가. 삭제 대신 tx_to를 닫음" }
+  },
+  "visibility": {
+    "set": "visible_to",
+    "members": "{reader} ∪ Character.id",
+    "pathways": ["direct", "observed", "told", "common"],
+    "predicates": {
+      "dramatic_irony": "reader ∈ V ∧ c ∉ V",
+      "mystery":        "reader ∉ V ∧ ∃c ∈ V",
+      "twist":          "V를 변경하는 예약 이벤트",
+      "continuity_bug": "c ∉ V 인데 c가 그 사실을 발화"
+    }
+  },
+  "origins": ["human", "agent", "cascade"],
+  "invariants": [
+    { "id": "causal_dag",   "desc": "causes 간선 그래프는 DAG를 유지" },
+    { "id": "reachability", "desc": "모든 사건 노드는 시작·끝 양쪽에서 도달 가능" },
+    { "id": "focalizer",    "desc": "씬당 focalizes 간선은 최대 1개" },
+    { "id": "story_order",  "desc": "story_to는 story_from 이상" }
+  ]
+}

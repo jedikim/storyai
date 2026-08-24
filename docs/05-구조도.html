@@ -1,0 +1,708 @@
+<title>구조도 — storyai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --ink:#171A24; --paper:#F1F1F5; --surface:#FFFFFF; --surface-2:#F7F7FA;
+  --line:#DBDBE4; --line-soft:#E9E9F0; --muted:#666A7A; --muted-2:#8A8E9E;
+  --thread:#A9333F; --indigo:#365478; --moss:#42684A; --brass:#8C6B28;
+  --thread-bg:#F8EAEC; --indigo-bg:#E9EFF6; --moss-bg:#E9F1EA; --brass-bg:#F7F0DF;
+  --shadow:0 1px 2px rgba(23,26,36,.05), 0 10px 30px rgba(23,26,36,.06);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Gowun Batang",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ink:#E4E5ED; --paper:#0D0F15; --surface:#161922; --surface-2:#1C202A;
+  --line:#2B303E; --line-soft:#222632; --muted:#949AAC; --muted-2:#767C8E;
+  --thread:#E8747F; --indigo:#89ACD6; --moss:#87B889; --brass:#D9AF66;
+  --thread-bg:#2B1C21; --indigo-bg:#182233; --moss-bg:#18251F; --brass-bg:#292317;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--thread);outline-offset:3px;border-radius:2px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1280px;margin:0 auto}
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:30px 20px 40px 24px;border-right:1px solid var(--line)}
+.doc{padding:32px 46px 110px;min-width:0}
+@media (max-width:960px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);padding:20px 22px 16px}
+  .doc{padding:24px 20px 70px}
+}
+
+/* rail */
+.mk{display:flex;align-items:center;gap:9px;margin-bottom:6px;text-decoration:none;color:inherit}
+.mk b{font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.rail .sub{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin:0 0 18px 29px}
+.rail h4{margin:16px 0 6px;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.rail a.d{display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 11px;font-size:12.5px;
+  color:var(--muted);text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail a.d:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail a.d.cur{color:var(--ink);border-left-color:var(--thread);font-weight:600}
+.rail a.d .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);flex:none}
+.rail .toc{margin-top:18px}
+.rail .toc a{display:block;padding:2.5px 0 2.5px 11px;font-size:12px;color:var(--muted);
+  text-decoration:none;border-left:1.5px solid var(--line-soft);line-height:1.45}
+.rail .toc a:hover{color:var(--ink);border-left-color:var(--thread)}
+.rail .toc a .n{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-right:5px}
+
+/* masthead */
+.mast{margin-bottom:42px}
+.mast .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--thread);font-weight:500;margin-bottom:12px}
+.mast h1{font-family:var(--serif);font-weight:700;font-size:clamp(28px,4.2vw,42px);line-height:1.2;
+  margin:0 0 12px;letter-spacing:-.025em;text-wrap:balance}
+.mast .dek{font-size:16px;color:var(--muted);max-width:62ch;margin:0 0 20px;line-height:1.66;font-weight:300}
+.mast .dek b{color:var(--ink);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:4px 24px;font-family:var(--mono);font-size:11px;
+  color:var(--muted-2);border-top:1px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+/* type */
+h2{font-family:var(--serif);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;
+  margin:54px 0 4px;text-wrap:balance;scroll-margin-top:20px}
+h2 .num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--thread);
+  display:block;letter-spacing:.1em;margin-bottom:6px}
+h2+.lede{color:var(--muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;font-weight:300;line-height:1.62}
+h3{font-size:17px;font-weight:600;letter-spacing:-.012em;margin:34px 0 10px;scroll-margin-top:20px}
+h3 .num{font-family:var(--mono);font-size:12px;color:var(--muted-2);font-weight:500;margin-right:8px}
+h4{font-size:13.5px;font-weight:600;margin:22px 0 7px}
+p{margin:0 0 14px;max-width:74ch}
+strong,b{font-weight:600}
+a{color:var(--thread);text-underline-offset:2.5px;text-decoration-thickness:1px}
+ul,ol{margin:0 0 15px;padding-left:22px;max-width:74ch}
+li{margin-bottom:6px}
+li::marker{color:var(--muted-2)}
+hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);border:1px solid var(--line-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+blockquote{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--line);
+  font-family:var(--serif);font-size:15.5px;color:var(--muted);max-width:66ch;line-height:1.8}
+
+/* blocks */
+.key{border-left:3px solid var(--thread);background:var(--thread-bg);padding:14px 18px;margin:20px 0;
+  border-radius:0 8px 8px 0;max-width:76ch}
+.key .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:5px}
+.key p{max-width:none}.key p:last-child{margin-bottom:0}
+.note{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:14px 18px;
+  margin:20px 0;font-size:14px;max-width:76ch}
+.note .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:5px}
+.note p{max-width:none}.note p:last-child{margin-bottom:0}
+.note.warn{border-left:3px solid var(--brass);background:var(--brass-bg);border-color:transparent}
+.note.warn .lbl{color:var(--brass)}
+.note.ok{border-left:3px solid var(--moss);background:var(--moss-bg);border-color:transparent}
+.note.ok .lbl{color:var(--moss)}
+
+/* code */
+pre{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:15px 17px;
+  overflow-x:auto;margin:18px 0;font-family:var(--mono);font-size:12.5px;line-height:1.68}
+pre code{background:none;border:none;padding:0;white-space:pre;font-size:inherit}
+pre .c{color:var(--muted-2)} pre .k{color:var(--indigo);font-weight:500}
+pre .s{color:var(--moss)} pre .t{color:var(--thread)}
+.codehead{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted-2);margin:20px 0 -10px;font-weight:600}
+
+/* tables */
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.55}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2);font-weight:600;
+  background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap;font-size:11.5px}
+.nm{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.y{color:var(--moss);font-weight:500} td.n{color:var(--thread);font-weight:500}
+
+/* figures */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:20px 22px 16px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.6;max-width:74ch;
+  padding-top:12px;border-top:1px solid var(--line-soft)}
+figcaption b{color:var(--ink);font-weight:500}
+figure .fnum{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--thread);font-weight:600;margin-bottom:10px}
+
+/* components */
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-family:var(--mono);
+  font-weight:500;vertical-align:middle}
+.pill.dev{background:var(--thread-bg);color:var(--thread)}
+.pill.evt{background:var(--indigo-bg);color:var(--indigo)}
+.pill.sub{background:var(--moss-bg);color:var(--moss)}
+.pill.w{background:var(--brass-bg);color:var(--brass)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;margin:20px 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px}
+.card h5{margin:0 0 6px;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.card .m{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.05em;
+  text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.card p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.62;max-width:none}
+.card p+p{margin-top:8px}
+.card.acc{border-left:3px solid var(--thread)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:22px 0}
+.stat{background:var(--surface);padding:14px 16px}
+.stat .v{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.stat .src{font-family:var(--mono);font-size:9.5px;color:var(--muted-2);margin-top:5px}
+.tool{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin:12px 0;overflow:hidden}
+.tool>header{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--surface-2);flex-wrap:wrap}
+.tool>header .tn{font-family:var(--mono);font-size:13px;font-weight:600}
+.tool>header .ro{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
+  background:var(--moss-bg);color:var(--moss);font-weight:500}
+.tool>header .rw{background:var(--brass-bg);color:var(--brass)}
+.tool>header .d{font-size:12.5px;color:var(--muted);margin-left:auto}
+.tool .body{padding:11px 14px}
+.tool pre{margin:0 0 9px;background:var(--paper);font-size:11.8px}
+.tool p{font-size:13px;color:var(--muted);margin:0;max-width:none;line-height:1.6}
+.rowlink{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+  border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 14px;
+  text-decoration:none;color:var(--ink);margin:6px 8px 6px 0}
+.rowlink:hover{border-color:var(--thread)}
+.rowlink .a{color:var(--thread)}
+.refs{font-size:12.5px;line-height:1.7;column-count:2;column-gap:34px}
+@media (max-width:800px){.refs{column-count:1}}
+.refs div{break-inside:avoid;margin-bottom:7px;color:var(--muted)}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{border-bottom-color:var(--thread)}
+.refs .tag{font-family:var(--mono);font-size:10px;color:var(--thread);margin-right:5px}
+.trail{display:flex;gap:10px;flex-wrap:wrap;margin-top:60px;padding-top:22px;border-top:1px solid var(--line)}
+.trail a{flex:1;min-width:220px;text-decoration:none;color:inherit;border:1px solid var(--line);
+  border-radius:9px;padding:12px 15px;background:var(--surface)}
+.trail a:hover{border-color:var(--thread)}
+.trail .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600}
+.trail .t{font-size:14px;font-weight:600;margin-top:3px}
+</style>
+<div class="wrap">
+<nav class="rail">
+<a class="mk" href="index.html"><svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M3 2v20M17 2v20" stroke="currentColor" stroke-width="1.2" opacity=".3"/><path d="M3 7c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none"/><path d="M3 15c5 0 5 5 7 5s2-5 7-5" stroke="var(--thread)" stroke-width="1.6" fill="none" opacity=".45"/></svg><b>storyai</b></a>
+<p class="sub">설계 문서 세트 v1</p>
+<h4>문서</h4>
+<a class="d" href="index.html"><span class="n">·</span><span>문서 허브</span></a>
+<a class="d" href="01-기획서.html"><span class="n">01</span><span>기획서</span></a>
+<a class="d" href="02-설계서.html"><span class="n">02</span><span>설계서</span></a>
+<a class="d" href="03-개발계획서.html"><span class="n">03</span><span>개발계획서</span></a>
+<a class="d" href="04-기술스택.html"><span class="n">04</span><span>기술 스택</span></a>
+<a class="d cur" href="05-구조도.html"><span class="n">05</span><span>구조도</span></a>
+<a class="d" href="06-UI설계.html"><span class="n">06</span><span>UI 설계</span></a>
+<a class="d" href="07-UI목업.html"><span class="n">07</span><span>UI 목업</span></a>
+<div class="toc"><h4>이 문서</h4><a href="#sys"><span class="n">A</span>시스템 전경</a>
+<a href="#gb"><span class="n">B</span>노드와 관계</a>
+<a href="#gc"><span class="n">C</span>시간과 서사 장치</a>
+<a href="#gd"><span class="n">D</span>툴 표면</a>
+<a href="#ge"><span class="n">E</span>쓰기와 전파</a>
+<a href="#gf"><span class="n">F</span>다중 호스트</a></div>
+</nav>
+<main class="doc">
+<header class="mast">
+  <div class="eyebrow">storyai · 05 구조도 · 2026-08-24</div>
+  <h1>구조도</h1>
+<p class="dek">이 시스템의 모든 다이어그램을 한 자리에. <b>설명 없이 그림만 훑고 싶을 때</b> 여기를 보세요. 각 그림마다 자세한 해설이 있는 곳을 링크했습니다.</p>
+<div class="meta">
+  <span>대상 <b>모두</b></span>
+  <span>그림 <b>11장</b></span>
+  <span>형식 <b>인라인 SVG · 라이트/다크 자동 대응</b></span>
+</div>
+
+</header>
+
+
+<h2 id="sys"><span class="num">A</span>시스템 전경</h2>
+
+<figure>
+<div class="fnum">그림 A1 — 코어 하나, 진입점 둘</div>
+<svg viewBox="0 0 900 340" role="img" aria-label="에이전트와 UI가 각각 MCP와 REST로 하나의 코어에 붙고, 코어는 SQLite 그래프와 git 관리 원고 파일 위에 놓인다. 원고는 코어를 통해서만 인덱싱되고, 그래프는 원고 조각을 참조로만 가리킨다.">
+  <defs><marker id="e1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="30" y="24" width="200" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".55"/>
+  <text x="130" y="49" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13.5" font-weight="600" fill="currentColor">코딩 에이전트</text>
+  <text x="130" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".6">Claude Code · Codex · Cursor</text>
+  <rect x="670" y="24" width="200" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".55"/>
+  <text x="770" y="49" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13.5" font-weight="600" fill="currentColor">캔버스 UI</text>
+  <text x="770" y="68" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".6">사람의 검수·직접 편집</text>
+  <rect x="70" y="122" width="120" height="34" rx="7" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.2"/>
+  <text x="130" y="144" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11.5" font-weight="600" fill="var(--thread)">MCP 어댑터</text>
+  <rect x="710" y="122" width="120" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  <text x="770" y="144" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11.5" fill="currentColor" opacity=".75">REST</text>
+  <line x1="130" y1="86" x2="130" y2="118" stroke="currentColor" stroke-width="1.3" marker-end="url(#e1a)" opacity=".6"/>
+  <line x1="770" y1="86" x2="770" y2="118" stroke="currentColor" stroke-width="1.3" marker-end="url(#e1a)" opacity=".6"/>
+  <rect x="255" y="112" width="390" height="118" rx="11" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"/>
+  <text x="450" y="136" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="14" font-weight="700" fill="currentColor">storyai core</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".8" text-anchor="middle">
+    <rect x="272" y="150" width="112" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+    <text x="328" y="166">온톨로지 · 스키마</text>
+    <rect x="394" y="150" width="112" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+    <text x="450" y="166">순회 · 검색</text>
+    <rect x="516" y="150" width="112" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+    <text x="572" y="166">제안 · 커밋</text>
+    <rect x="272" y="182" width="172" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+    <text x="358" y="198">진단 규칙 (결정론)</text>
+    <rect x="454" y="182" width="174" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+    <text x="541" y="198">도미노 전파 엔진</text>
+  </g>
+  <line x1="190" y1="139" x2="251" y2="139" stroke="var(--thread)" stroke-width="1.6" marker-end="url(#e1a)" color="var(--thread)"/>
+  <line x1="706" y1="139" x2="649" y2="139" stroke="currentColor" stroke-width="1.3" marker-end="url(#e1a)" opacity=".6"/>
+  <rect x="255" y="268" width="185" height="52" rx="9" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".55"/>
+  <text x="347" y="290" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="currentColor">story.db</text>
+  <text x="347" y="307" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">SQLite · 그래프 + op 로그 + 인덱스</text>
+  <rect x="460" y="268" width="185" height="52" rx="9" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".55"/>
+  <text x="552" y="290" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="currentColor">manuscript/*.md</text>
+  <text x="552" y="307" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">원고 원문 · git</text>
+  <line x1="347" y1="234" x2="347" y2="264" stroke="currentColor" stroke-width="1.3" marker-end="url(#e1a)" opacity=".6"/>
+  <line x1="552" y1="234" x2="552" y2="264" stroke="currentColor" stroke-width="1.3" marker-end="url(#e1a)" opacity=".6"/>
+  <text x="356" y="253" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".55">읽기·쓰기</text>
+  <text x="561" y="253" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".55">인덱싱만 (읽기)</text>
+  <path d="M440 294 L456 294" stroke="var(--thread)" stroke-width="1.4" stroke-dasharray="3 3"/>
+  <text x="448" y="337" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--thread)">노드는 원문을 참조로만 가리킴 (evidence span)</text>
+</svg>
+<figcaption>MCP는 “에이전트용 어댑터”일 뿐이라 떼고 붙이는 게 자유롭습니다. 원고 원문은 그래프 안에 복사되지 않고 <b>파일에 남아 git으로 관리</b>되며, 노드는 그 조각을 위치 참조로만 가리킵니다. <a href="01-기획서.html#mcp">해설 → 기획서 §6</a></figcaption>
+</figure>
+
+<figure>
+<div class="fnum">그림 A2 — 자체 개발 vs MCP 경로</div>
+<svg viewBox="0 0 880 250" role="img" aria-label="두 아키텍처 비교. 자체 개발은 에이전트 루프까지 직접 소유해야 하지만, MCP 경로에서는 루프가 기성 호스트로 넘어가고 도메인 로직만 남는다. 도메인 로직 블록은 양쪽에서 동일하다.">
+  <defs><marker id="e2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="20" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="currentColor" opacity=".65">A · 전부 자체 개발</text>
+  <text x="470" y="20" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--thread)">B · MCP 경로</text>
+  <rect x="20" y="34" width="380" height="196" rx="10" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".35" stroke-dasharray="4 4"/>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="12" fill="currentColor" text-anchor="middle">
+    <rect x="40" y="50" width="340" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".5"/><text x="210" y="70">UI</text>
+    <rect x="40" y="86" width="340" height="76" rx="6" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.3"/>
+    <text x="210" y="108" font-weight="600" fill="var(--brass)">에이전트 루프</text>
+    <text x="210" y="127" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--brass)">컨텍스트 예산 · 툴 루프 · 재시도 · 계획</text>
+    <text x="210" y="145" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--brass)">서브에이전트 · 취소/재개 · 승인 · 관측</text>
+    <rect x="40" y="168" width="340" height="46" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.4"/>
+    <text x="210" y="188" font-weight="600">도메인 로직</text>
+    <text x="210" y="205" font-size="10.5" font-family="IBM Plex Mono,monospace" opacity=".7">온톨로지 · 인덱스 · 복선 · 진단</text>
+  </g>
+  <rect x="470" y="34" width="390" height="196" rx="10" fill="none" stroke="var(--thread)" stroke-width="1.3"/>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="12" fill="currentColor" text-anchor="middle">
+    <rect x="490" y="50" width="170" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".5"/><text x="575" y="70">UI (선택)</text>
+    <rect x="672" y="50" width="168" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".5"/><text x="756" y="70">CLI 에이전트</text>
+    <rect x="672" y="86" width="168" height="76" rx="6" fill="none" stroke="var(--thread)" stroke-width="1.3" stroke-dasharray="5 4"/>
+    <text x="756" y="112" font-weight="600" fill="var(--thread)">에이전트 루프</text>
+    <text x="756" y="131" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--thread)">기성 호스트가</text>
+    <text x="756" y="147" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--thread)">이미 갖고 있음</text>
+    <rect x="490" y="168" width="350" height="46" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.4"/>
+    <text x="665" y="188" font-weight="600">도메인 로직 — 동일</text>
+    <text x="665" y="205" font-size="10.5" font-family="IBM Plex Mono,monospace" opacity=".7">온톨로지 · 인덱스 · 복선 · 진단</text>
+  </g>
+  <line x1="575" y1="82" x2="575" y2="166" stroke="currentColor" stroke-width="1.1" opacity=".45" marker-end="url(#e2a)"/>
+  <line x1="756" y1="162" x2="756" y2="166" stroke="currentColor" stroke-width="1.1" opacity=".45" marker-end="url(#e2a)"/>
+</svg>
+<figcaption>두 그림에서 바닥 블록은 완전히 같습니다. 차이는 가운데 블록 하나를 직접 만드느냐 빌리느냐뿐이고, 그게 몇 달짜리 일입니다. <a href="01-기획서.html#mcp">해설 → 기획서 §6</a></figcaption>
+</figure>
+
+<figure>
+<div class="fnum">그림 A3 — 데이터 흐름: 원고에서 컨텍스트까지</div>
+<svg viewBox="0 0 900 300" role="img" aria-label="원고가 추출을 거쳐 그래프가 되고, 질의 조건부 검색이 그중 일부만 골라 컨텍스트 패킷을 만든다. 원고 전문은 이 경로에서 컨텍스트로 직접 흐르지 않는다.">
+  <defs><marker id="e3a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="40" width="150" height="70" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="99" y="66" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">원고</text>
+  <text x="99" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".65">manuscript/*.md</text>
+  <text x="99" y="100" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="var(--thread)" font-weight="600">50만 자</text>
+
+  <path d="M178 75 L228 75" stroke="currentColor" stroke-width="1.4" marker-end="url(#e3a)"/>
+  <text x="203" y="66" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".6">ingest</text>
+
+  <rect x="232" y="40" width="150" height="70" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="307" y="66" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">추출</text>
+  <text x="307" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".65">씬 분할 · 타입 추출</text>
+  <text x="307" y="100" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".65">근거 span 강제</text>
+
+  <path d="M386 75 L436 75" stroke="currentColor" stroke-width="1.4" marker-end="url(#e3a)"/>
+  <text x="411" y="66" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".6">제안</text>
+
+  <rect x="440" y="40" width="150" height="70" rx="9" fill="var(--moss-bg)" stroke="var(--moss)" stroke-width="1.6"/>
+  <text x="515" y="66" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--moss)">그래프</text>
+  <text x="515" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--moss)" opacity=".85">타입 노드 + 간선</text>
+  <text x="515" y="100" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="var(--moss)" font-weight="600">약 2만 자</text>
+
+  <path d="M594 75 L644 75" stroke="var(--indigo)" stroke-width="1.6" marker-end="url(#e3a)" color="var(--indigo)"/>
+  <text x="619" y="66" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--indigo)">조건부 검색</text>
+
+  <rect x="648" y="40" width="180" height="70" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.6"/>
+  <text x="738" y="66" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--indigo)">컨텍스트 패킷</text>
+  <text x="738" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)" opacity=".85">시드 → 1-hop → 절단</text>
+  <text x="738" y="100" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="var(--indigo)" font-weight="600">4,000 토큰</text>
+
+  <path d="M99 114 Q 99 190 720 190 L720 116" stroke="var(--thread)" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#e3a)" color="var(--thread)"/>
+  <rect x="300" y="176" width="230" height="28" rx="6" fill="var(--paper)"/>
+  <text x="415" y="195" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="var(--thread)">필요한 씬 <tspan font-weight="600">하나만</tspan> 전문으로 (get include=body)</text>
+
+  <rect x="24" y="228" width="804" height="56" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="44" y="250" font-family="IBM Plex Sans KR,sans-serif" font-size="12" font-weight="700" fill="var(--thread)">원고 전문은 이 경로로 흐르지 않습니다</text>
+  <text x="44" y="270" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)">50만 자가 컨텍스트에 들어가는 일은 없습니다. 그래프가 2만 자로 압축하고, 조건부 검색이 다시 4,000 토큰으로 좁힙니다. 원문은 <tspan font-weight="600">지목된 하나</tspan>만 따로 불러옵니다.</text>
+</svg>
+<figcaption>같은 저장소를 통째로 던지면 multi-hop 정확도 0.358, <b>질의 조건부로 검색하면 0.898</b>입니다. 저장소 내용이 아니라 조건부 검색이 지렛대입니다. <a href="01-기획서.html#lever">해설 → 기획서 §3</a></figcaption>
+</figure>
+
+<h2 id="gb"><span class="num">B</span>노드와 관계</h2>
+<figure>
+<div class="fnum">그림 B1 — 노드 타입 체계</div>
+<svg viewBox="0 0 880 380" role="img" aria-label="세 층으로 나뉜 노드 타입. 아래층 원소는 존재하는 것, 가운데층 사건은 일어나는 것, 위층 서사 장치는 작가가 배치하는 것. 태그가 클래스로서 층을 가로질러 다중 상속을 만들고, 피처는 여러 타입에 붙는 프로퍼티 번들이다.">
+  <defs><marker id="xd1a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="20" width="620" height="86" rx="10" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="40" y="41" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--thread)" letter-spacing="1">LAYER 2 · DEVICE — 작가가 배치하는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)" text-anchor="middle">
+    <rect x="40" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="84" y="70">Promise</text><text x="84" y="83" font-size="9.5" opacity=".75">복선</text>
+    <rect x="136" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="180" y="70">Twist</text><text x="180" y="83" font-size="9.5" opacity=".75">반전</text>
+    <rect x="232" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="276" y="70">Reveal</text><text x="276" y="83" font-size="9.5" opacity=".75">폭로</text>
+    <rect x="328" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="372" y="70">Fact</text><text x="372" y="83" font-size="9.5" opacity=".75">사실·가시성</text>
+    <rect x="424" y="52" width="88" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="468" y="70">Thread</text><text x="468" y="83" font-size="9.5" opacity=".75">플롯라인</text>
+    <rect x="520" y="52" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--thread)" stroke-width="1"/><text x="572" y="70">Arc</text><text x="572" y="83" font-size="9.5" opacity=".75">인물 아크</text>
+  </g>
+  <rect x="24" y="126" width="620" height="86" rx="10" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.3"/>
+  <text x="40" y="147" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--indigo)" letter-spacing="1">LAYER 1 · EVENT — 일어나는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--indigo)" text-anchor="middle">
+    <rect x="40" y="158" width="120" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1.6"/><text x="100" y="176" font-weight="600">Scene</text><text x="100" y="189" font-size="9.5" opacity=".75">원자 단위</text>
+    <rect x="168" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="220" y="176">Event</text><text x="220" y="189" font-size="9.5" opacity=".75">작중 사건</text>
+    <rect x="280" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="332" y="176">Beat</text><text x="332" y="189" font-size="9.5" opacity=".75">극적 비트</text>
+    <rect x="392" y="158" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="444" y="176">Chapter</text><text x="444" y="189" font-size="9.5" opacity=".75">담기 단위</text>
+    <rect x="504" y="158" width="120" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="564" y="176">Act</text><text x="564" y="189" font-size="9.5" opacity=".75">막</text>
+  </g>
+  <rect x="24" y="232" width="620" height="86" rx="10" fill="var(--moss-bg)" stroke="var(--moss)" stroke-width="1.3"/>
+  <text x="40" y="253" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">LAYER 0 · SUBSTANCE — 존재하는 것</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--moss)" text-anchor="middle">
+    <rect x="40" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="92" y="282">Character</text><text x="92" y="295" font-size="9.5" opacity=".75">인물</text>
+    <rect x="152" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="204" y="282">Location</text><text x="204" y="295" font-size="9.5" opacity=".75">장소</text>
+    <rect x="264" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="316" y="282">Object</text><text x="316" y="295" font-size="9.5" opacity=".75">소품</text>
+    <rect x="376" y="264" width="104" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="428" y="282">Faction</text><text x="428" y="295" font-size="9.5" opacity=".75">세력</text>
+    <rect x="488" y="264" width="136" height="38" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="556" y="282">Rule / Concept</text><text x="556" y="295" font-size="9.5" opacity=".75">세계 규칙·용어</text>
+  </g>
+  <rect x="676" y="20" width="180" height="298" rx="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4" opacity=".7"/>
+  <text x="766" y="42" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".75">횡단 · CROSS-CUTTING</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="currentColor" text-anchor="middle">
+    <rect x="694" y="58" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="78" font-weight="600">Tag = 클래스</text><text x="766" y="95" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">extends → 다중 부모</text>
+    <rect x="694" y="122" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="142" font-weight="600">Feature</text><text x="766" y="159" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">프로퍼티 번들 (평면)</text>
+    <rect x="694" y="186" width="144" height="52" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"/>
+    <text x="766" y="206" font-weight="600">Group</text><text x="766" y="223" font-size="10" font-family="IBM Plex Mono,monospace" opacity=".7">임의 묶음 · 뷰</text>
+    <text x="766" y="262" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">한 노드가</text>
+    <text x="766" y="278" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">여러 Tag를 가짐</text>
+    <text x="766" y="298" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".6">Feature는 여러 타입에</text>
+  </g>
+  <line x1="672" y1="82" x2="648" y2="72" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#xd1a)"/>
+  <line x1="672" y1="148" x2="648" y2="176" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#xd1a)"/>
+  <line x1="672" y1="212" x2="648" y2="282" stroke="currentColor" stroke-width="1.1" opacity=".5" marker-end="url(#xd1a)"/>
+  <text x="24" y="352" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">예 · 한도영 = Character + #Suspect + #POV + Feature(Wounded) + Feature(SecretKeeper)</text>
+  <text x="24" y="370" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".6">타입은 하나, 태그는 여럿, 피처는 붙였다 뗐다 — 이게 “다중 상속”의 실제 구현입니다.</text>
+</svg>
+<figcaption>Layer 2가 이 시스템의 존재 이유입니다. <b>Layer 0·1만 있으면 그냥 위키</b>고, 기존 소설 도구가 전부 거기서 멈춰 있습니다. 다중 상속은 클래스 계층이 아니라 <b>태그(의미) + 피처(데이터)</b> 두 축으로 구현합니다 — 피처가 평면 데이터라 다이아몬드 문제가 원천적으로 없습니다. <a href="02-설계서.html#ontology">해설 →</a></figcaption>
+</figure>
+
+<h2 id="gc"><span class="num">C</span>시간과 서사 장치</h2>
+<figure>
+<div class="fnum">그림 C1 — 세 개의 시간축</div>
+<svg viewBox="0 0 880 300" role="img" aria-label="세 개의 시간축. 작중 시간, 독자 인지 시간, 편집 시간이 같은 사실에 대해 각각 다른 구간을 갖는다. 작중 시간이 독자 인지 시간보다 앞서면 회상이고, 편집 시간의 두 구간은 사람이 에이전트의 주장을 정정한 이력이다.">
+  <defs><marker id="xd2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="22" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">사실 · “한도영은 왼손잡이다”</text>
+  <text x="20" y="66" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--indigo)">story</text>
+  <text x="20" y="82" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">작중 시간</text>
+  <line x1="150" y1="66" x2="840" y2="66" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="150" y="58" width="620" height="16" rx="4" fill="var(--indigo)" opacity=".28"/>
+  <text x="460" y="70" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--indigo)" font-weight="600">1장 – 끝 · 계속 참</text>
+  <text x="20" y="140" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--thread)">discourse</text>
+  <text x="20" y="156" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">독자 인지</text>
+  <line x1="150" y1="140" x2="840" y2="140" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="392" y="132" width="378" height="16" rx="4" fill="var(--thread)" opacity=".3"/>
+  <line x1="392" y1="120" x2="392" y2="160" stroke="var(--thread)" stroke-width="2"/>
+  <text x="400" y="116" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)" font-weight="600">9장 · 여기서 밝혀짐</text>
+  <text x="580" y="144" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">독자가 아는 구간</text>
+  <path d="M392 78 L392 126" stroke="var(--thread)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#xd2a)" color="var(--thread)"/>
+  <path d="M160 78 Q 270 104 384 126" stroke="var(--thread)" stroke-width="1.4" fill="none" stroke-dasharray="4 3" opacity=".8"/>
+  <text x="196" y="108" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="var(--thread)">↺ 8장 회상이 이 간격을 메움</text>
+  <text x="20" y="216" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="currentColor" opacity=".8">transaction</text>
+  <text x="20" y="232" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">편집 이력</text>
+  <line x1="150" y1="216" x2="840" y2="216" stroke="currentColor" stroke-width="1" opacity=".2"/>
+  <rect x="150" y="208" width="250" height="16" rx="4" fill="var(--brass)" opacity=".3"/>
+  <rect x="404" y="208" width="366" height="16" rx="4" fill="currentColor" opacity=".22"/>
+  <text x="275" y="220" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">r7 · 에이전트 주장 (13:58)</text>
+  <text x="587" y="220" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".75">r9 · 사람이 확정 (14:02)</text>
+  <line x1="402" y1="200" x2="402" y2="232" stroke="currentColor" stroke-width="1.6"/>
+  <text x="150" y="252" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="currentColor" opacity=".6">r7은 삭제되지 않고 tx_to가 닫힐 뿐 — “왜 그렇게 알고 있었나”가 영구 조회 가능</text>
+  <rect x="150" y="268" width="690" height="26" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="1" opacity=".7"/>
+  <text x="164" y="285" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">회상 = story_from &lt; reveal_at   ·   극적 아이러니 = reader ∈ V ∧ character ∉ V   ·   리트콘 = tx 구간이 둘 이상</text>
+</svg>
+<figcaption><b>회상은 기능이 아니라 두 필드의 불일치입니다.</b> 작가가 “여기는 회상”이라고 따로 태그하지 않아도 <code>story_from &lt; reveal_at</code>에서 자동으로 나옵니다. STORYWRITER(CIKM 2025)의 플래시백 처리가 정확히 이 두 필드이고, 인과 DAG는 fabula 순서로 유지한 채 챕터 배정만 다르게 하는 것이 전부입니다. <a href="02-설계서.html#time">해설 →</a></figcaption>
+</figure>
+<figure>
+<div class="fnum">그림 C2 — 복선 상태기계</div>
+<svg viewBox="0 0 880 310" role="img" aria-label="복선의 상태기계. hypothetical에서 시작해 트리거가 발화하면 eligible, 회수 씬이 배치되면 actualized가 된다. 트리거 없이 회수하면 근거 없는 해결로, 끝까지 hypothetical이면 방치된 복선으로 표시된다.">
+  <defs><marker id="xd3a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <g font-family="IBM Plex Sans KR,sans-serif" text-anchor="middle">
+    <rect x="30" y="96" width="140" height="58" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.5"/>
+    <text x="100" y="120" font-size="13" font-weight="600" fill="currentColor">hypothetical</text>
+    <text x="100" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".65">심겼음 · 대기</text>
+    <rect x="290" y="96" width="140" height="58" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.5"/>
+    <text x="360" y="120" font-size="13" font-weight="600" fill="var(--brass)">eligible</text>
+    <text x="360" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--brass)" opacity=".85">회수 가능</text>
+    <rect x="550" y="96" width="140" height="58" rx="9" fill="var(--moss-bg)" stroke="var(--moss)" stroke-width="1.5"/>
+    <text x="620" y="120" font-size="13" font-weight="600" fill="var(--moss)">actualized</text>
+    <text x="620" y="139" font-size="10.5" font-family="IBM Plex Mono,monospace" fill="var(--moss)" opacity=".85">회수 완료</text>
+    <rect x="740" y="24" width="126" height="48" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5" stroke-dasharray="4 3"/>
+    <text x="803" y="44" font-size="12" fill="currentColor" opacity=".75">prevented</text>
+    <text x="803" y="61" font-size="10" font-family="IBM Plex Mono,monospace" fill="currentColor" opacity=".55">의도적 폐기</text>
+  </g>
+  <line x1="174" y1="125" x2="284" y2="125" stroke="currentColor" stroke-width="1.6" marker-end="url(#xd3a)"/>
+  <text x="229" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" font-weight="600">T 발화</text>
+  <text x="229" y="145" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="currentColor" opacity=".6">codify(context, T) = true</text>
+  <line x1="434" y1="125" x2="544" y2="125" stroke="var(--moss)" stroke-width="1.6" marker-end="url(#xd3a)" color="var(--moss)"/>
+  <text x="489" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--moss)" font-weight="600">P 배치</text>
+  <text x="489" y="145" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="var(--moss)" opacity=".8">회수 씬이 씌어짐</text>
+  <path d="M690 110 Q 730 90 740 62" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".45" stroke-dasharray="4 3"/>
+  <path d="M170 110 Q 420 20 738 44" stroke="currentColor" stroke-width="1.1" fill="none" opacity=".4" stroke-dasharray="4 3" marker-end="url(#xd3a)"/>
+  <text x="430" y="30" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10" fill="currentColor" opacity=".55">레드헤링으로 정리</text>
+  <path d="M100 158 Q 100 220 350 220" stroke="var(--thread)" stroke-width="1.7" fill="none" marker-end="url(#xd3a)" color="var(--thread)"/>
+  <rect x="352" y="204" width="196" height="32" rx="7" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="450" y="224" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" font-weight="600" fill="var(--thread)">근거 없는 해결</text>
+  <text x="222" y="212" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--thread)">T 없이 P 배치</text>
+  <rect x="30" y="252" width="518" height="34" rx="7" fill="none" stroke="var(--thread)" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="46" y="273" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" font-weight="600" fill="var(--thread)">방치된 복선</text>
+  <text x="150" y="273" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)" opacity=".85">status = hypothetical AND book_complete  ← SQL 한 줄로 나옴</text>
+  <rect x="580" y="180" width="286" height="106" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1" opacity=".8"/>
+  <text x="598" y="202" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".7">노드에 저장되는 측정값</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="598" y="224"><tspan font-weight="600">S-Eff</tspan>   첫 독서 시 티나는 정도 — 낮을수록 좋음</text>
+    <text x="598" y="244"><tspan font-weight="600">Δ-Coh</tspan>   사후 납득도 — 높을수록 좋음</text>
+    <text x="598" y="264"><tspan font-weight="600">debt</tspan>    미회수 부채 가중치</text>
+    <text x="598" y="280" opacity=".6">좋은 단서 = 낮은 S-Eff × 높은 Δ-Coh</text>
+  </g>
+</svg>
+<figcaption>정보이론적 <b>페어플레이</b> 정식화(arXiv:2507.13841)가 두 측정값의 근거입니다 — 놀라움과 납득은 <em>단일 독자 모델에서는</em> 반드시 상충하지만, 폭로 전 독자와 사후 독자를 분리하면 공존합니다. 그 두 평가를 그래프에서 각각 계산할 수 있으므로 미스터리의 균형을 정량적으로 조정할 수 있게 됩니다. <a href="02-설계서.html#promise">해설 →</a></figcaption>
+</figure>
+
+<h2 id="gd"><span class="num">D</span>툴 표면</h2>
+<figure>
+<div class="fnum">그림 D1 — 왜 전문을 반환하면 안 되나</div>
+<svg viewBox="0 0 880 250" role="img" aria-label="같은 질문에 대한 두 응답 방식 비교. 전문을 반환하면 25000 토큰 상한에 걸려 잘리고, 개요와 참조만 반환하면 에이전트가 필요한 하나만 골라 다시 요청한다.">
+  <defs><marker id="xd4a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <text x="20" y="18" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">질문 · “한도영이 나오는 씬 전부”</text>
+  <text x="20" y="48" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--thread)">✗ 값 반환</text>
+  <rect x="20" y="58" width="392" height="66" rx="8" fill="none" stroke="var(--thread)" stroke-width="1.3"/>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="34" y="78">씬 12개의 <tspan font-weight="600">전문</tspan> — 약 41,000 토큰</text>
+    <text x="34" y="96" fill="var(--thread)">→ 25,000에서 절단, 디스크로 밀림</text>
+    <text x="34" y="114" fill="var(--thread)" opacity=".8">→ 모델은 2KB 프리뷰만 봄. 질문 미해결</text>
+  </g>
+  <text x="466" y="48" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)">✓ 참조 반환</text>
+  <rect x="466" y="58" width="392" height="66" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.3"/>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor">
+    <text x="480" y="78">씬 12개의 <tspan font-weight="600">주소 + 한 줄 요약</tspan> — 약 340 토큰</text>
+    <text x="480" y="96" fill="var(--moss)">→ 모델이 그중 하나를 고름</text>
+    <text x="480" y="114" fill="var(--moss)" opacity=".8">→ get(ref, include=body) 로 그것만 3,100 토큰</text>
+  </g>
+  <line x1="662" y1="128" x2="662" y2="152" stroke="currentColor" stroke-width="1.2" marker-end="url(#xd4a)" opacity=".6"/>
+  <rect x="466" y="156" width="392" height="76" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"/>
+  <text x="480" y="177" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor">합계 3,440 토큰 · 12배 절감</text>
+  <text x="480" y="196" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".75">그리고 모델이 <tspan font-weight="600">무엇을 왜 골랐는지</tspan>가 로그에 남음</text>
+  <text x="480" y="216" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">— 이게 read set이 되고, 도미노 전파의 의존 간선이 됨</text>
+  <rect x="20" y="156" width="392" height="76" rx="8" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity=".45"/>
+  <text x="34" y="177" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">읽은 게 뭔지 알 수 없음 —</text>
+  <text x="34" y="196" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".6">충돌 판정도, 전파 의존성도 세울 수 없음</text>
+</svg>
+<figcaption>토큰 절감은 부수 효과일 뿐입니다. <b>더 중요한 건 모델이 무엇을 근거로 읽었는지가 기록으로 남는다는 것</b>입니다 — 전문을 통째로 던지면 그 정보가 사라지고, §10의 충돌 판정과 §12의 전파가 둘 다 성립하지 않게 됩니다. <a href="02-설계서.html#tools">해설 →</a></figcaption>
+</figure>
+
+<h2 id="ge"><span class="num">E</span>쓰기와 전파</h2>
+<figure>
+<div class="fnum">그림 E1 — 제안에서 커밋까지</div>
+<svg viewBox="0 0 880 320" role="img" aria-label="제안이 도착하면 read set의 각 노드 리비전을 현재 리비전과 비교한다. 전부 일치하면 필드 단위로 검사해 겹치지 않으면 적용하고, 리비전이 다르면 사람의 확정을 덮어쓰지 않고 보류한다.">
+  <defs><marker id="xd5a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="20" y="20" width="164" height="44" rx="8" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="102" y="40" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--thread)">제안 도착</text>
+  <text x="102" y="56" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--thread)" opacity=".85">ops + read_set</text>
+  <line x1="184" y1="42" x2="236" y2="42" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd5a)"/>
+  <rect x="240" y="14" width="220" height="56" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"/>
+  <text x="350" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">read_set 리비전 대조</text>
+  <text x="350" y="55" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".7">∀ n ∈ read_set : n.rev == current(n).rev ?</text>
+  <path d="M460 32 L530 32" stroke="var(--moss)" stroke-width="1.5" marker-end="url(#xd5a)" color="var(--moss)"/>
+  <text x="495" y="24" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--moss)" font-weight="600">일치</text>
+  <rect x="534" y="10" width="200" height="44" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.3"/>
+  <text x="634" y="30" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12" fill="var(--moss)">필드 단위 검사</text>
+  <text x="634" y="46" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--moss)" opacity=".85">같은 필드를 다른 값으로? → 충돌</text>
+  <path d="M350 70 L350 108" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#xd5a)" color="var(--brass)"/>
+  <text x="360" y="92" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)" font-weight="600">불일치</text>
+  <rect x="240" y="112" width="220" height="60" rx="8" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.3"/>
+  <text x="350" y="134" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--brass)">보류 · 사람에게</text>
+  <text x="350" y="152" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="10.5" fill="var(--brass)">근거가 낡음 — 절대 덮어쓰지 않음</text>
+  <text x="350" y="166" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--brass)" opacity=".8">현재 값 + 변경 이력을 함께 보여줌</text>
+  <path d="M634 54 L634 92" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd5a)"/>
+  <rect x="510" y="96" width="248" height="76" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"/>
+  <text x="634" y="117" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">위험 등급 정책</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor">
+    <text x="524" y="136"><tspan fill="var(--moss)">자동</tspan>  고립 노드 신규 · 빈 필드 채우기</text>
+    <text x="524" y="152"><tspan fill="var(--brass)">검수</tspan>  기존 필드 변경 · 간선 삭제</text>
+    <text x="524" y="168"><tspan fill="var(--thread)">항상</tspan>  locked 노드 · canon 규칙 · 40+ 연쇄</text>
+  </g>
+  <path d="M634 172 L634 206" stroke="var(--moss)" stroke-width="1.5" marker-end="url(#xd5a)" color="var(--moss)"/>
+  <rect x="510" y="210" width="248" height="48" rx="8" fill="none" stroke="var(--moss)" stroke-width="1.4"/>
+  <text x="634" y="230" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--moss)">커밋 — 단일 트랜잭션</text>
+  <text x="634" y="248" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--moss)" opacity=".85">부분 적용 금지 · rev++ · cid 재계산</text>
+  <path d="M634 258 L634 288" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd5a)"/>
+  <rect x="470" y="292" width="288" height="26" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/>
+  <text x="614" y="309" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="currentColor" opacity=".8">영향 부분그래프에만 check() 재실행 → 도미노(§12)</text>
+  <rect x="20" y="210" width="420" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="4 4" opacity=".5"/>
+  <text x="36" y="232" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="currentColor" opacity=".7">삭제는 없다</text>
+  <text x="36" y="252" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".7">INVALIDATE는 tx_to를 닫을 뿐 — 패배한 버전은</text>
+  <text x="36" y="270" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="currentColor" opacity=".7">누가·언제·왜 밀어냈는지와 함께 영구 조회 가능</text>
+</svg>
+<figcaption>Dolt의 셀 단위 3-way merge 규칙을 그대로 씁니다 — 안정적 ID로 행을 맞추고, 양쪽이 <em>다른</em> 필드를 바꿨으면 둘 다 적용, <b>같은 필드를 다른 값으로 바꿨을 때만 충돌</b>. 그 위 계층(“이 두 노드가 서사적으로 모순된다”)은 머지 문제가 아니라 <b>검증 문제</b>라서 §12의 진단 규칙이 담당합니다. <a href="02-설계서.html#ops">해설 →</a></figcaption>
+</figure>
+<figure>
+<div class="fnum">그림 E2 — 2단 전파 엔진</div>
+<svg viewBox="0 0 880 380" role="img" aria-label="변경이 커밋되면 read set 역방향으로 의존 노드를 dirty로 표시하고, 먼저 결정론 규칙으로 검사한다. 규칙이 플래그한 노드만 LLM 재도출로 넘어가며, 재도출 결과가 정규화 비교에서 같으면 전파가 그 자리에서 멈춘다.">
+  <defs><marker id="xd6a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="20" y="18" width="150" height="42" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="95" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="currentColor">커밋</text>
+  <text x="95" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">한도영.주손 변경</text>
+  <line x1="170" y1="39" x2="216" y2="39" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd6a)"/>
+  <rect x="220" y="18" width="180" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  <text x="310" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" fill="currentColor">역 read_set 조회</text>
+  <text x="310" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">이 노드를 읽고 쓴 제안들</text>
+  <line x1="400" y1="39" x2="446" y2="39" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd6a)"/>
+  <rect x="450" y="18" width="180" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  <text x="540" y="36" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" fill="currentColor">전이적 dirty 마킹</text>
+  <text x="540" y="52" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".7">위상 정렬 · 순환 감지</text>
+  <line x1="540" y1="60" x2="540" y2="92" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd6a)"/>
+  <rect x="140" y="96" width="600" height="86" rx="10" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.5"/>
+  <text x="160" y="118" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--indigo)" letter-spacing="1">TIER 1 · 결정론 — LLM 호출 0회</text>
+  <g font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="var(--indigo)" text-anchor="middle">
+    <rect x="160" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="225" y="145">참조 무결성</text><text x="225" y="159" font-size="9.5" opacity=".75">고아 간선 검출</text>
+    <rect x="298" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="363" y="145">DAG 불변식</text><text x="363" y="159" font-size="9.5" opacity=".75">인과 순환 금지</text>
+    <rect x="436" y="128" width="130" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="501" y="145">시간 구간</text><text x="501" y="159" font-size="9.5" opacity=".75">겹침 · 사후 등장</text>
+    <rect x="574" y="128" width="146" height="38" rx="6" fill="var(--surface)" stroke="var(--indigo)" stroke-width="1"/><text x="647" y="145">가시성 · 복선</text><text x="647" y="159" font-size="9.5" opacity=".75">V 위반 · 미회수</text>
+  </g>
+  <line x1="440" y1="182" x2="440" y2="212" stroke="var(--brass)" stroke-width="1.5" marker-end="url(#xd6a)" color="var(--brass)"/>
+  <text x="450" y="202" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">플래그된 노드만</text>
+  <rect x="140" y="216" width="600" height="76" rx="10" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="160" y="238" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--brass)" letter-spacing="1">TIER 2 · LLM 재도출 — P6에서 추가</text>
+  <text x="160" y="258" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--brass)">항상 <tspan font-weight="600">원본 인간 작성 노드 + 바뀐 사실</tspan>에서 재도출. 직전 도출 결과를 다시 입력으로 넣지 않음.</text>
+  <text x="160" y="278" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--brass)" opacity=".9">홉 ≤ 2~3 · 토큰·노드 예산 · 초과 시 fail-closed</text>
+  <line x1="440" y1="292" x2="440" y2="316" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd6a)"/>
+  <rect x="212" y="320" width="456" height="46" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.6"/>
+  <text x="440" y="340" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="700" fill="var(--thread)">EARLY CUTOFF — 정규화 구조 투영으로 비교</text>
+  <text x="440" y="358" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="11" fill="var(--thread)">값이 같으면 의존 노드를 dirty로 만들지 않는다. <tspan font-weight="600">이게 없으면 절대 안 멈춘다.</tspan></text>
+  <path d="M212 343 Q 100 343 100 200 Q 100 60 166 39" stroke="var(--thread)" stroke-width="1.3" fill="none" stroke-dasharray="4 3" opacity=".55"/>
+  <text x="60" y="200" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--thread)" opacity=".7" transform="rotate(-90 60 200)">변경 있으면 다음 홉</text>
+</svg>
+<figcaption><b>Salsa(rust-analyzer)의 red-green backdating과 Buck2 DICE의 값 비교 스킵</b>이 근거입니다. LLM은 같은 입력에도 문자열이 매번 다르므로, 원문 텍스트로 비교하면 전파가 영원히 멈추지 않습니다 — 반드시 <b>타입 필드로 정규화 투영</b>한 뒤 비교해야 합니다. <a href="02-설계서.html#cascade">해설 →</a></figcaption>
+</figure>
+
+<h2 id="gf"><span class="num">F</span>다중 호스트</h2>
+<figure>
+<div class="fnum">그림 F1 — 듀얼 매니페스트 패키지</div>
+<svg viewBox="0 0 900 400" role="img" aria-label="패키지 파일 트리와 각 파일을 어느 호스트가 읽는지. 가운데 코어 파일들은 양쪽이 모두 읽고, 훅 파일 두 개만 각 호스트 전용이다.">
+  <defs><marker id="xd7a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="20" width="180" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="114" y="41" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">Claude Code</text>
+  <text x="114" y="58" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".6">TS · 비공개</text>
+  <rect x="696" y="20" width="180" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="786" y="41" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="13" font-weight="600" fill="currentColor">Codex CLI</text>
+  <text x="786" y="58" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="currentColor" opacity=".6">Rust · Apache-2.0</text>
+  <rect x="248" y="92" width="404" height="196" rx="11" fill="var(--surface-2)" stroke="var(--moss)" stroke-width="1.8"/>
+  <text x="450" y="115" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">이식 가능 코어 — 양쪽이 그대로 읽음</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="11.5" fill="currentColor">
+    <rect x="268" y="128" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="146">plugin.json <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— agent-plugins 스키마, 루트</tspan></text>
+    <rect x="268" y="160" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="178">.mcp.json <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— storyai MCP 서버 선언</tspan></text>
+    <rect x="268" y="192" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="210">skills/*/SKILL.md <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— 규격 6필드만</tspan></text>
+    <rect x="268" y="224" width="364" height="26" rx="5" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/>
+    <text x="282" y="242">AGENTS.md <tspan font-size="10" opacity=".6" font-family="IBM Plex Sans KR,sans-serif">— 작품 규칙 · 인계 프로토콜</tspan></text>
+    <rect x="268" y="256" width="364" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="1" opacity=".4" stroke-dasharray="3 3"/>
+    <text x="282" y="273" opacity=".65">manuscript/ · bible/ · store/story.db</text>
+  </g>
+  <rect x="24" y="128" width="196" height="82" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="122" y="149" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="var(--indigo)">CC 어댑터</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--indigo)">
+    <text x="40" y="169">.claude-plugin/plugin.json</text>
+    <text x="40" y="186">hooks/claude.hooks.json</text>
+    <text x="40" y="203">.lsp.json <tspan font-size="9" opacity=".7">(P4+, CC 전용)</tspan></text>
+  </g>
+  <rect x="680" y="128" width="196" height="82" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.4"/>
+  <text x="778" y="149" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="var(--brass)">Codex 어댑터</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--brass)">
+    <text x="696" y="169">hooks/codex.hooks.json</text>
+    <text x="696" y="186">.codex/config.toml</text>
+    <text x="696" y="203">.rules <tspan font-size="9" opacity=".7">(execpolicy, 선택)</tspan></text>
+  </g>
+  <line x1="114" y1="66" x2="114" y2="124" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#xd7a)" color="var(--indigo)"/>
+  <line x1="786" y1="66" x2="786" y2="124" stroke="var(--brass)" stroke-width="1.3" marker-end="url(#xd7a)" color="var(--brass)"/>
+  <path d="M220 169 L244 169" stroke="var(--moss)" stroke-width="1.4" marker-end="url(#xd7a)" color="var(--moss)"/>
+  <path d="M676 169 L656 169" stroke="var(--moss)" stroke-width="1.4" marker-end="url(#xd7a)" color="var(--moss)"/>
+  <rect x="24" y="308" width="852" height="76" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.4"/>
+  <text x="44" y="330" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="700" fill="var(--thread)">듀얼 매니페스트가 성립하는 이유</text>
+  <text x="44" y="351" font-family="IBM Plex Mono,monospace" font-size="10.5" fill="var(--thread)">Codex: DISCOVERABLE_PLUGIN_MANIFEST_PATHS = [ ".codex-plugin/…" , ".claude-plugin/plugin.json" , ".cursor-plugin/…" ]</text>
+  <text x="44" y="371" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)">Codex는 루트 <tspan font-family="IBM Plex Mono,monospace">plugin.json</tspan>을 먼저 보고, 없으면 위 경로로 폴백합니다. Claude Code는 인식 못 하는 최상위 필드를 무시합니다. <tspan font-weight="600">그래서 둘 다 놓아두면 됩니다.</tspan></text>
+</svg>
+<figcaption>호스트에 묶이는 건 <b>훅과 에디터 통합 두 가지뿐</b>입니다. 나머지는 전부 코어에 들어갑니다. 훅 파일 두 개가 각자 <b>같은 스크립트를 호출</b>하게 하고, 규칙 자체는 <code>server/core/</code>에 한 번만 존재하게 하세요. 규칙 로직이 훅 JSON에 들어가는 순간 두 호스트의 동작이 갈립니다. <a href="02-설계서.html#hosts">해설 →</a></figcaption>
+</figure>
+<figure>
+<div class="fnum">그림 F2 — 세션이 바뀌어도 남는 것</div>
+<svg viewBox="0 0 900 340" role="img" aria-label="세션이 바뀌어도 그래프와 원고, 계류 제안, 세션 노드는 남는다. 대화 이력만 사라진다. 새 세션은 세션 노드를 읽어 이전 작업을 이어받는다.">
+  <defs><marker id="xd8a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+  <rect x="24" y="24" width="200" height="76" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="124" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--indigo)">화요일 · Claude Code</text>
+  <text x="124" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)">14장 초고 집필</text>
+  <text x="124" y="83" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)" opacity=".75">제안 3건 · 2건 승인</text>
+  <rect x="350" y="24" width="200" height="76" rx="9" fill="var(--brass-bg)" stroke="var(--brass)" stroke-width="1.4"/>
+  <text x="450" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--brass)">수요일 · Codex</text>
+  <text x="450" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)">1–14장 연속성 검수</text>
+  <text x="450" y="83" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--brass)" opacity=".75">진단 6건 기록</text>
+  <rect x="676" y="24" width="200" height="76" rx="9" fill="var(--indigo-bg)" stroke="var(--indigo)" stroke-width="1.4"/>
+  <text x="776" y="46" text-anchor="middle" font-family="IBM Plex Sans KR,sans-serif" font-size="12.5" font-weight="600" fill="var(--indigo)">목요일 · Claude Code</text>
+  <text x="776" y="65" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--indigo)">진단 6건 반영 · 15장</text>
+  <path d="M228 62 L344 62" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".4"/>
+  <path d="M554 62 L670 62" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".4"/>
+  <text x="286" y="54" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".5">대화 이력 소멸</text>
+  <text x="612" y="54" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="currentColor" opacity=".5">대화 이력 소멸</text>
+  <line x1="124" y1="100" x2="124" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd8a)" opacity=".65"/>
+  <line x1="450" y1="100" x2="450" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd8a)" opacity=".65"/>
+  <line x1="776" y1="100" x2="776" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#xd8a)" opacity=".65"/>
+  <path d="M112 150 L112 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#xd8a)" color="var(--moss)"/>
+  <path d="M438 150 L438 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#xd8a)" color="var(--moss)"/>
+  <path d="M764 150 L764 104" stroke="var(--moss)" stroke-width="1.3" marker-end="url(#xd8a)" color="var(--moss)"/>
+  <text x="152" y="132" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="var(--moss)">읽기 ↑ / 쓰기 ↓</text>
+  <rect x="24" y="154" width="852" height="106" rx="11" fill="var(--surface-2)" stroke="var(--moss)" stroke-width="1.8"/>
+  <text x="44" y="177" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="var(--moss)" letter-spacing="1">남는 것 — 호스트와 무관하게 지속</text>
+  <g font-family="IBM Plex Mono,monospace" font-size="11" fill="currentColor" text-anchor="middle">
+    <rect x="44" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="138" y="209">store/story.db · 그래프</text>
+    <rect x="244" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="338" y="209">manuscript/ · git</text>
+    <rect x="444" y="190" width="188" height="30" rx="6" fill="var(--surface)" stroke="var(--moss)" stroke-width="1"/><text x="538" y="209">계류 제안 · 진단</text>
+    <rect x="644" y="190" width="188" height="30" rx="6" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.4"/><text x="738" y="209" fill="var(--thread)" font-weight="600">session/ 노드</text>
+    <rect x="44" y="226" width="788" height="24" rx="6" fill="none" stroke="currentColor" stroke-width="1" opacity=".4" stroke-dasharray="3 3"/>
+    <text x="438" y="243" opacity=".7">AGENTS.md · skills/ · plugin.json — 양쪽이 같은 규칙을 읽음</text>
+  </g>
+  <rect x="24" y="276" width="852" height="52" rx="9" fill="var(--thread-bg)" stroke="var(--thread)" stroke-width="1.3"/>
+  <text x="44" y="298" font-family="IBM Plex Sans KR,sans-serif" font-size="12" font-weight="700" fill="var(--thread)">스위칭이 강제하는 규율</text>
+  <text x="44" y="318" font-family="IBM Plex Sans KR,sans-serif" font-size="11.5" fill="var(--thread)">“다음 턴에 이어서 하자”를 <tspan font-family="IBM Plex Mono,monospace">session/</tspan> 노드에 안 적으면 그 의도는 영영 사라집니다. 대화에 기대는 습관이 여기서 비용을 청구합니다.</text>
+</svg>
+<figcaption>스위칭은 부담이 아니라 <b>규율 장치</b>입니다. 한 호스트만 쓰면 “대화에 남아 있으니까 괜찮겠지”로 넘어가는 것들이, 호스트를 갈아타는 순간 전부 드러납니다. <b>스위칭이 잘 되는 시스템은 그 자체로 잘 설계된 시스템입니다.</b> <a href="02-설계서.html#hosts">해설 →</a></figcaption>
+</figure>
+
+<div class="trail"><a href="04-기술스택.html"><div class="k">← 이전</div><div class="t">기술 스택</div></a><a href="06-UI설계.html"><div class="k">다음 →</div><div class="t">UI 설계</div></a></div>
+</main>
+</div>

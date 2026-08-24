@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "storyai": {
+      "command": "python3",
+      "args": ["-m", "storyai.server"],
+      "env": { "STORYAI_DB": "${PROJECT_DIR}/store/story.db" }
+    }
+  }
+}

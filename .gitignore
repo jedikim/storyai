@@ -1,0 +1,14 @@
+store/*.db
+store/*.db-wal
+store/*.db-shm
+store/backups/
+__pycache__/
+.venv/
+.pytest_cache/
+.coverage
+*.py[cod]
+*.egg-info/
+dist/
+build/lib/
+node_modules/
+.DS_Store

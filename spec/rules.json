@@ -1,0 +1,98 @@
+{
+  "$comment": "진단 규칙 카탈로그. ConStory-Bench 5범주 19서브타입 기반. 문서: docs/02-설계서.html#cascade",
+  "version": "1.0.0",
+  "tiers": {
+    "1": "결정론 — 순수 그래프/SQL 연산, LLM 호출 0회",
+    "2": "LLM 필요 — Tier 1이 플래그한 노드에만"
+  },
+  "targeting": {
+    "$comment": "검증 예산을 어디에 쓸지. ConStory-Bench 실측",
+    "hot_band": [0.40, 0.60],
+    "hot_band_desc": "일관성 오류가 집중되는 서사 위치 구간",
+    "entropy_signal": "오류 문장은 평균 대비 섀넌 엔트로피 12~19% 높음"
+  },
+  "rules": [
+    { "id": "timeline.absolute", "tier": 1, "category": "시간·플롯", "severity": "error",
+      "desc": "같은 사건에 서로 다른 절대 시각이 붙음",
+      "query": "동일 event를 가리키는 노드 쌍 중 props.absolute_time 불일치" },
+    { "id": "timeline.duration", "tier": 1, "category": "시간·플롯", "severity": "warn",
+      "desc": "경과 시간이 서술과 모순" },
+    { "id": "timeline.simultaneity", "tier": 1, "category": "시간·플롯", "severity": "error",
+      "desc": "한 인물이 겹치는 story 구간에 두 장소에 present_at",
+      "query": "present_at 자기조인, story 구간 교차 AND occurs_at 상이" },
+    { "id": "plot.causeless", "tier": 1, "category": "시간·플롯", "severity": "warn",
+      "desc": "결과 사건에 들어오는 causes 간선이 0개" },
+    { "id": "plot.causal_violation", "tier": 1, "category": "시간·플롯", "severity": "error",
+      "desc": "causes 간선이 story 시간 순서를 역행" },
+    { "id": "plot.abandoned", "tier": 1, "category": "시간·플롯", "severity": "error",
+      "desc": "끝까지 hypothetical인 Promise 또는 도달 불가 사건 노드",
+      "query": "SELECT * FROM node WHERE kind='Promise' AND json_extract(props,'$.status')='hypothetical'" },
+
+    { "id": "character.memory", "tier": 1, "category": "인물", "severity": "error",
+      "desc": "인지 시점 이전 사실을 참조하는 발화",
+      "query": "visibility.learned_at > scene.story_from 인데 해당 인물이 발화" },
+    { "id": "character.knowledge", "tier": 1, "category": "인물", "severity": "error",
+      "desc": "c ∉ visible_to(f) 인데 c가 f를 발화",
+      "query": "scene의 발화 인물이 fact.visible_to에 없음" },
+    { "id": "character.skill", "tier": 2, "category": "인물", "severity": "warn",
+      "desc": "능력 수준이 씬 간에 흔들림" },
+    { "id": "character.forgotten_ability", "tier": 1, "category": "인물", "severity": "warn",
+      "desc": "확립된 능력이 필요한 상황에서 사용되지 않음" },
+
+    { "id": "world.core_rule", "tier": 1, "category": "세계관", "severity": "error",
+      "desc": "씬의 post가 locked Rule의 술어를 위반",
+      "query": "scene.forbid/post ∩ Rule.props 위반 검사" },
+    { "id": "world.social_norm", "tier": 2, "category": "세계관", "severity": "info",
+      "desc": "확립된 사회 규범과 불일치" },
+    { "id": "world.geography", "tier": 1, "category": "세계관", "severity": "error",
+      "desc": "이동 시간·거리가 확립된 지리와 모순" },
+
+    { "id": "detail.appearance", "tier": 1, "category": "사실·세부", "severity": "error",
+      "desc": "같은 속성 필드의 구간 겹침 + 값 불일치",
+      "query": "동일 node.props 키에 대해 story 구간 교차 AND 값 상이" },
+    { "id": "detail.nomenclature", "tier": 1, "category": "사실·세부", "severity": "warn",
+      "desc": "같은 실체를 가리키는 미등록 별칭",
+      "query": "FTS로 유사 표기 검출, aliases에 없음" },
+    { "id": "detail.quantity", "tier": 1, "category": "사실·세부", "severity": "warn",
+      "desc": "수량이 씬 간에 불일치" },
+
+    { "id": "narrative.perspective", "tier": 1, "category": "서술", "severity": "error",
+      "desc": "초점화자가 없거나 씬 안에서 바뀜",
+      "query": "focalizes 간선 개수 != 1" },
+    { "id": "narrative.tone", "tier": 2, "category": "서술", "severity": "info",
+      "desc": "어조가 급격히 이탈" },
+    { "id": "style.drift", "tier": 2, "category": "서술", "severity": "info",
+      "desc": "챕터별 문체 지표 분산 > 임계. 통계로 계산 가능하나 판단은 LLM" },
+
+    { "id": "promise.unearned", "tier": 1, "category": "복선", "severity": "error",
+      "desc": "트리거 없이 pays_off가 걸린 Promise",
+      "query": "pays_off 존재 AND requires_trigger 부재" },
+    { "id": "promise.premature", "tier": 1, "category": "복선", "severity": "error",
+      "desc": "pays_off 씬의 story_from이 트리거보다 앞섬" },
+    { "id": "promise.trigger_undefined", "tier": 1, "category": "복선", "severity": "warn",
+      "desc": "트리거 조건이 정의되지 않아 회수 가능 여부 판정 불가" },
+
+    { "id": "graph.orphan_edge", "tier": 1, "category": "무결성", "severity": "error",
+      "desc": "존재하지 않는 노드를 가리키는 간선" },
+    { "id": "graph.causal_cycle", "tier": 1, "category": "무결성", "severity": "error",
+      "desc": "causes 간선에 순환 발생 — 쓰기 자체를 거부" },
+    { "id": "graph.unreachable", "tier": 1, "category": "무결성", "severity": "warn",
+      "desc": "시작 또는 끝에서 도달 불가한 사건 노드" },
+
+    { "id": "plot.contradiction", "tier": 2, "category": "서사 논리", "severity": "error",
+      "desc": "구조로 안 잡히는 의미적 모순. Tier 1이 좁힌 후보에만 적용" }
+  ],
+  "cascade": {
+    "early_cutoff": {
+      "required": true,
+      "compare_on": "정규화된 구조 투영 (typed fields)",
+      "never_compare_on": "원문 텍스트 — LLM 비결정성 때문에 절대 수렴하지 않음"
+    },
+    "budgets": { "max_depth": 3, "max_nodes": 40, "max_tokens": 20000,
+                 "visited_key": ["node_id", "rev"] },
+    "cycles": { "default": "reject", "opt_in": "bounded_iteration", "max_iterations": 3 },
+    "llm_tier2": { "max_hops": 2, "rederive_from": "원본 인간 작성 노드 + 바뀐 사실",
+                   "never": "직전 도출 결과를 다시 입력으로" },
+    "output": "항상 Proposal. 자동 커밋 없음"
+  }
+}
