@@ -16,7 +16,7 @@ hooks/    자동 검사 트리거.  Claude Code / Codex 각각
 AGENTS.md 에이전트 지침 단일 소스 ★ 양쪽 호스트가 읽음
 
 manuscript/ api/ web/        ← 후속 단계에서 채웁니다
-server/ bible/ store/        ← P0 읽기 전용 인덱스 구현
+server/ bible/ store/        ← P0 조회 + P1 제안/커밋 구현
 ```
 
 ## 문서
@@ -40,10 +40,11 @@ server/ bible/ store/        ← P0 읽기 전용 인덱스 구현
 문서가 설명하는 대상이자 구현이 직접 읽는 파일입니다.
 
 ```
-spec/ontology.json   노드 16종 · 간선 24종 · 태그 · 삼중 시간축 · 가시성 · 불변식
+spec/ontology.json   노드 18종 · 간선 28종 · 태그 · 삼중 시간축 · 가시성 · 불변식
 spec/tools.json      MCP 툴 15개 시그니처 · 예산 · 위험 등급 정책
 spec/rules.json      진단 규칙 26개 (Tier 1 결정론 / Tier 2 LLM) · 전파 정책
-spec/schema.sql      DDL — 테이블 15 · 뷰 5 · 인덱스 29
+spec/policy.json     P1 변경 위험 등급 · 잠금 · 캐스케이드 임계값
+spec/schema.sql      DDL — 테이블 22 · 뷰 5 · 인덱스 18
 ```
 
 `sqlite3 store/story.db < spec/schema.sql` 로 바로 적용됩니다.
@@ -85,16 +86,16 @@ python3 build/build.py
 그래서 문서 하나하나가 자립형이고 어디에 올려도 그대로 렌더됩니다.
 의존성은 파이썬 표준 라이브러리뿐입니다.
 
-## 다음 단계
+## 구현 현황
 
-**P0 — 읽기 전용 인덱스, 1~2주.** 스키마를 SQLite에 올리고 툴 다섯 개
-(`graph_schema · outline · find · get · refs`)만 만듭니다.
-완료 기준은 하나 — 기존 원고를 넣고 Claude Code에서
-**"한도영이 나오는 씬 전부"**가 답해지는 것.
+**P0 읽기 전용 인덱스**와 **P1 쓰기 경로**가 구현되어 있습니다. 조회 도구 다섯 개와
+`propose · commit`을 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌 판정을 거쳐
+단일 SQLite 커밋 레인에서 원자적으로 적용됩니다.
 
-자세한 분해는 [개발계획서 §P0](docs/03-개발계획서.html#p0).
+다음은 **P2 — 복선과 진단**입니다. 자세한 분해는
+[개발계획서 §P2](docs/03-개발계획서.html#p2)를 따릅니다.
 
-## P0 개발 실행
+## 개발 실행
 
 Python 3.12 이상에서 격리 환경을 만들고 개발 의존성을 설치합니다.
 
@@ -115,3 +116,16 @@ server/run-mcp.sh
 마지막 명령은 stdio MCP 서버이므로 터미널에 대기하는 것이 정상입니다. Claude Code와
 Codex는 각자의 프로젝트 설정을 통해 동일한 `server/run-mcp.sh` 엔트리포인트를
 실행합니다.
+
+## P1 쓰기 계약
+
+`propose`는 live 그래프를 바꾸지 않습니다. 각 op에는 8자 이상의 고유 `idem_key`가
+필요하고 `read_set`은 비어 있을 수 없습니다. 최초 Session처럼 기존 노드 근거가 없는
+ADD는 현재 `graph_state.revision`을 `{ "node": "book", "rev": n }`으로 전달합니다.
+
+지원 verb는 `ADD · UPDATE · INVALIDATE · LINK · UNLINK`입니다. `INVALIDATE`와
+`UNLINK`는 행을 삭제하지 않고 `tx_to`를 닫습니다. `commit(mode="dry_run")`은 실제와
+같은 검증·CID·Merkle 계산을 수행한 뒤 전체 트랜잭션을 되돌립니다.
+
+`story://session/latest`는 가장 최근 Session 노드를 가리킵니다. Session의 `props`에는
+`open_threads`와 `next`를 반드시 남겨 다음 호스트가 이어받을 수 있게 합니다.

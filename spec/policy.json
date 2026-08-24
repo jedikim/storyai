@@ -1,0 +1,95 @@
+{
+  "$comment": "P1 위험 등급 정책. 첫 일치가 아니라 가장 높은 등급을 사용합니다.",
+  "version": "1.0.0",
+  "rank": { "auto": 0, "review": 1, "always": 2 },
+  "rules": [
+    {
+      "id": "locked-node",
+      "risk": "always",
+      "when": { "locked": true },
+      "effect": "forbid",
+      "description": "locked 노드는 제안으로 수정할 수 없다"
+    },
+    {
+      "id": "canon-rule",
+      "risk": "always",
+      "when": { "kind": "Rule", "verb": ["UPDATE", "INVALIDATE"] },
+      "effect": "forbid",
+      "description": "세계관 규칙 변경은 사람에게 넘긴다"
+    },
+    {
+      "id": "contradiction-edge",
+      "risk": "always",
+      "when": { "verb": "LINK", "rel": "contradicts" },
+      "effect": "allow",
+      "description": "모순 간선 생성은 항상 명시적 commit이 필요하다"
+    },
+    {
+      "id": "existing-value-change",
+      "risk": "review",
+      "when": { "verb": "UPDATE", "existing_non_null": true },
+      "effect": "allow",
+      "description": "기존 값 변경은 검수 대상이다"
+    },
+    {
+      "id": "hard-unlink",
+      "risk": "review",
+      "when": { "verb": "UNLINK", "hard": true },
+      "effect": "allow",
+      "description": "hard 간선 해제는 검수 대상이다"
+    },
+    {
+      "id": "hard-link",
+      "risk": "review",
+      "when": { "verb": "LINK", "hard": true },
+      "effect": "allow",
+      "description": "hard 간선 추가는 검수 대상이다"
+    },
+    {
+      "id": "promise-transition",
+      "risk": "review",
+      "when": { "kind": "Promise", "field": "props.status" },
+      "effect": "allow",
+      "description": "복선 상태 전이는 검수 대상이다"
+    },
+    {
+      "id": "new-node",
+      "risk": "auto",
+      "when": { "verb": "ADD" },
+      "effect": "allow",
+      "description": "참조 없는 신규 노드는 자동 등급이다"
+    },
+    {
+      "id": "null-fill",
+      "risk": "auto",
+      "when": { "verb": "UPDATE", "existing_null": true },
+      "effect": "allow",
+      "description": "null 필드 채우기는 자동 등급이다"
+    },
+    {
+      "id": "soft-link",
+      "risk": "auto",
+      "when": { "verb": "LINK", "hard": false },
+      "effect": "allow",
+      "description": "soft 간선 추가는 자동 등급이다"
+    },
+    {
+      "id": "soft-unlink",
+      "risk": "auto",
+      "when": { "verb": "UNLINK", "hard": false },
+      "effect": "allow",
+      "description": "soft 간선 해제는 자동 등급이다"
+    },
+    {
+      "id": "invalidate-node",
+      "risk": "review",
+      "when": { "verb": "INVALIDATE" },
+      "effect": "allow",
+      "description": "노드 무효화는 검수 대상이다"
+    }
+  ],
+  "cascade": {
+    "review_from_nodes": 3,
+    "always_from_nodes": 40
+  }
+}

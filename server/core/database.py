@@ -63,3 +63,24 @@ def connect_bootstrap(db_path: str | Path) -> Iterator[sqlite3.Connection]:
         raise
     finally:
         connection.close()
+
+
+@contextmanager
+def connect_write(db_path: str | Path) -> Iterator[sqlite3.Connection]:
+    """Open the single serialized P1 commit lane with an immediate transaction."""
+    database = Path(db_path).expanduser().resolve()
+    if not database.is_file():
+        raise DatabaseError(f"story 데이터베이스가 없습니다: {database}")
+    connection = sqlite3.connect(database, timeout=30.0, isolation_level=None)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()

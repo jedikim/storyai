@@ -12,6 +12,7 @@ from .budget import DEFAULT_MAX_CHARS, fit_response
 from .database import initialize_database
 from .ontology import Ontology, OntologyError
 from .traverse import GraphStore
+from .write_service import WriteService
 
 ResponseFormat = Literal["concise", "detailed"]
 
@@ -25,6 +26,7 @@ class StoryService:
         ontology_path: str | Path,
         rules_path: str | Path,
         schema_path: str | Path,
+        policy_path: str | Path | None = None,
     ) -> None:
         self.project_root = Path(project_root).resolve()
         self.db_path = initialize_database(db_path, schema_path)
@@ -32,6 +34,11 @@ class StoryService:
         self.rules_path = Path(rules_path).resolve()
         self.store = GraphStore(self.db_path, project_root=self.project_root)
         self.addresses = AddressResolver(self.ontology, self.store)
+        self.writer = WriteService(
+            db_path=self.db_path,
+            ontology=self.ontology,
+            policy_path=policy_path or self.project_root / "spec" / "policy.json",
+        )
 
     @classmethod
     def from_environment(cls) -> StoryService:
@@ -44,7 +51,39 @@ class StoryService:
             ontology_path=root / "spec" / "ontology.json",
             rules_path=root / "spec" / "rules.json",
             schema_path=root / "spec" / "schema.sql",
+            policy_path=root / "spec" / "policy.json",
         )
+
+    def propose(
+        self,
+        *,
+        ops: list[dict[str, Any]],
+        read_set: list[dict[str, Any]],
+        rationale: str,
+        session_id: str,
+        actor_kind: Literal["human", "agent", "cascade"] = "agent",
+        model_id: str | None = None,
+        host: Literal["claude-code", "codex", "ui", "test"] = "codex",
+        on_behalf_of: str | None = None,
+    ) -> dict[str, Any]:
+        return self.writer.propose(
+            ops=ops,
+            read_set=read_set,
+            rationale=rationale,
+            session_id=session_id,
+            actor_kind=actor_kind,
+            model_id=model_id,
+            host=host,
+            on_behalf_of=on_behalf_of,
+        )
+
+    def commit(
+        self,
+        proposal_id: str,
+        *,
+        mode: Literal["apply", "dry_run"] = "apply",
+    ) -> dict[str, Any]:
+        return self.writer.commit(proposal_id, mode=mode)
 
     def graph_schema(
         self,

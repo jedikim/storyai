@@ -87,8 +87,16 @@ class AddressResolver:
     def resolve(self, ref: str) -> str:
         parsed = parse_address(ref, self.ontology)
         query = _norm(parsed.value)
+        candidates = self.source.address_candidates()
+        if query == "session/latest":
+            sessions = sorted(
+                candidate.id for candidate in candidates if _norm(candidate.kind) == "session"
+            )
+            if not sessions:
+                raise AddressNotFoundError(f"주소를 찾을 수 없습니다: {ref!r}")
+            return sessions[-1]
         scored: list[tuple[int, str]] = []
-        for candidate in self.source.address_candidates():
+        for candidate in candidates:
             candidate_id = _norm(candidate.id)
             title = _norm(candidate.title)
             aliases = tuple(_norm(alias) for alias in candidate.aliases)
