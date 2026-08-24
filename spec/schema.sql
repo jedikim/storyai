@@ -168,6 +168,63 @@ CREATE TABLE IF NOT EXISTS provenance (
   PRIMARY KEY (node_version)
 );
 
+-- P1 리비전 스냅샷. node는 빠른 현재 상태, 이 테이블은 덮어쓰기 전 이력이다.
+CREATE TABLE IF NOT EXISTS node_revision (
+  node          TEXT NOT NULL REFERENCES node(id),
+  rev           INTEGER NOT NULL,
+  snapshot      TEXT NOT NULL,                -- 정규 JSON 전체 상태
+  cid           TEXT NOT NULL,
+  tx_from       TEXT NOT NULL,
+  tx_to         TEXT,
+  proposal      TEXT REFERENCES proposal(id),
+  PRIMARY KEY (node, rev)
+);
+CREATE INDEX IF NOT EXISTS ix_node_revision_cid ON node_revision(cid);
+
+-- 필드 단위 PROV-O 매핑. 같은 노드 리비전 안에서도 변경 근거를 분리한다.
+CREATE TABLE IF NOT EXISTS field_provenance (
+  node          TEXT NOT NULL REFERENCES node(id),
+  rev           INTEGER NOT NULL,
+  field         TEXT NOT NULL,
+  generated_by  TEXT REFERENCES proposal(id),
+  derived_from  TEXT,
+  attributed_to TEXT NOT NULL,
+  on_behalf_of  TEXT,
+  ts            TEXT NOT NULL,
+  PRIMARY KEY (node, rev, field)
+);
+
+-- 정책 판정과 충돌은 제안과 함께 보존한다. 충돌 제안도 삭제하지 않는다.
+CREATE TABLE IF NOT EXISTS proposal_assessment (
+  proposal      TEXT PRIMARY KEY REFERENCES proposal(id),
+  risk          TEXT NOT NULL,
+  reasons       TEXT NOT NULL DEFAULT '[]',
+  conflicts     TEXT NOT NULL DEFAULT '[]',
+  pending_overlap TEXT NOT NULL DEFAULT '[]',
+  CHECK (risk IN ('auto','review','always'))
+);
+
+CREATE TABLE IF NOT EXISTS proposal_actor (
+  proposal      TEXT PRIMARY KEY REFERENCES proposal(id),
+  on_behalf_of  TEXT
+);
+
+-- 그래프 Merkle 루트와 단조 증가 book 리비전.
+CREATE TABLE IF NOT EXISTS graph_state (
+  singleton     INTEGER PRIMARY KEY CHECK (singleton = 1),
+  revision      INTEGER NOT NULL,
+  root_cid      TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS commit_record (
+  proposal      TEXT PRIMARY KEY REFERENCES proposal(id),
+  graph_revision INTEGER NOT NULL,
+  root_cid      TEXT NOT NULL,
+  result        TEXT NOT NULL,
+  committed_at  TEXT NOT NULL
+);
+
 -- ═══════════════════════════════════════════════════════════
 -- 진단 ─ check()의 결과가 노드에 붙어 있어야 함
 -- ═══════════════════════════════════════════════════════════

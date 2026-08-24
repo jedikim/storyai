@@ -5,10 +5,12 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from .runtime import get_service
+from .tools.commit import commit
 from .tools.find import find
 from .tools.get import get
 from .tools.graph_schema import graph_schema
 from .tools.outline import outline
+from .tools.propose import propose
 from .tools.refs import refs
 
 INSTRUCTIONS = (
@@ -19,6 +21,10 @@ INSTRUCTIONS = (
 )
 
 TOOL_DESCRIPTIONS = {
+    "commit": (
+        "저장된 제안을 단일 SQLite 커밋 레인에서 원자적으로 적용하거나 dry_run 합니다. "
+        "충돌하면 어떤 변경도 적용하지 않습니다."
+    ),
     "find": (
         "제목·별칭·요약·설정집 본문을 검색합니다. P0의 hybrid는 BM25/문자열 검색이며 "
         "semantic 전용 모드는 P3에서 추가됩니다."
@@ -35,6 +41,10 @@ TOOL_DESCRIPTIONS = {
         "책 전체 또는 한 주소 아래의 구조를 본문 없이 반환합니다. "
         "항상 넓은 탐색의 첫 단계로 사용하세요."
     ),
+    "propose": (
+        "비어 있지 않은 read_set과 멱등 키가 있는 연산을 변경 제안으로 기록합니다. "
+        "이 호출만으로 live 그래프는 바뀌지 않습니다."
+    ),
     "refs": (
         "한 노드를 가리키거나 그 노드가 가리키는 관계를 반환합니다. "
         "산문 언급인 soft 간선은 요청할 때만 포함합니다."
@@ -46,19 +56,21 @@ def create_server() -> FastMCP:
     get_service()
     server = FastMCP(name="storyai", instructions=INSTRUCTIONS)
     functions = {
+        "commit": commit,
         "find": find,
         "get": get,
         "graph_schema": graph_schema,
         "outline": outline,
+        "propose": propose,
         "refs": refs,
     }
-    annotations = {
-        "readOnlyHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    }
     for name in sorted(functions):
+        annotations = {
+            "readOnlyHint": name not in {"propose", "commit"},
+            "destructiveHint": name == "commit",
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
         server.tool(
             name=name,
             description=TOOL_DESCRIPTIONS[name],

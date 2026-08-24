@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .core.address import parse_address
 from .core.database import connect_bootstrap, connect_read_only, initialize_database
+from .core.merkle import advance_graph_state, ensure_graph_state, record_revision, refresh_node_cid
 from .core.ontology import Ontology
 
 
@@ -160,6 +161,12 @@ class BibleLoader:
             locked = self.ontology.kinds[kind].default_locked
         relative_file = path.relative_to(self.project_root).as_posix()
         body_start_bytes = len(text[:body_start].encode("utf-8"))
+        canonical_edges = [edge.model_dump(mode="json") for edge in item.edges]
+        canonical_edges.sort(
+            key=lambda value: json.dumps(
+                value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+        )
         canonical = {
             "id": node_id,
             "kind": kind,
@@ -169,7 +176,7 @@ class BibleLoader:
             "tags": sorted(tags),
             "features": item.features,
             "props": item.props,
-            "edges": [edge.model_dump(mode="json") for edge in item.edges],
+            "edges": canonical_edges,
             "story_from": item.story_from,
             "story_to": item.story_to,
             "reveal_at": item.reveal_at,
@@ -275,13 +282,19 @@ class BibleLoader:
         edge_count = 0
         changed_ids: set[str] = set()
         with connect_bootstrap(self.db_path) as connection:
+            ensure_graph_state(connection)
             for node in nodes:
                 current = connection.execute(
-                    "SELECT cid, tx_to FROM node WHERE id = ?", (node.id,)
+                    "SELECT cid, tx_to, rev FROM node WHERE id = ?", (node.id,)
                 ).fetchone()
                 if current is not None and current["cid"] == node.cid and current["tx_to"] is None:
                     continue
                 changed_ids.add(node.id)
+                if current is not None:
+                    connection.execute(
+                        "UPDATE node_revision SET tx_to = ? WHERE node = ? AND rev = ?",
+                        (now, node.id, current["rev"]),
+                    )
                 connection.execute(
                     """
                     INSERT INTO node (
@@ -347,6 +360,11 @@ class BibleLoader:
                         ),
                     )
                     edge_count += 1
+            for node_id in sorted(changed_ids):
+                refresh_node_cid(connection, node_id)
+                record_revision(connection, node_id, proposal_id=None, replace=True)
+            if changed_ids:
+                advance_graph_state(connection, now)
         return {"nodes": len(nodes), "edges": edge_count}
 
     def _replace_node_details(self, connection: Any, node: BibleNode) -> None:
