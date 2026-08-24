@@ -26,11 +26,15 @@ async def test_mcp_lists_tools_in_deterministic_order(
     server = create_server()
     async with Client(server) as client:
         tools = await client.list_tools()
+        checked = await client.call_tool("check", {"scope": "book", "severity": "error"})
         schema = await client.call_tool("graph_schema", {"section": "kinds"})
         outline = await client.call_tool("outline", {"scope": "book"})
         found = await client.call_tool("find", {"q": "도영"})
         node = await client.call_tool("get", {"ref": "character/한도영"})
         references = await client.call_tool("refs", {"ref": "character/한도영"})
+        promise_board = await client.call_tool(
+            "promises", {"status": ["hypothetical"], "sort": "debt"}
+        )
         proposed = await client.call_tool(
             "propose",
             {
@@ -53,16 +57,22 @@ async def test_mcp_lists_tools_in_deterministic_order(
             "commit", {"proposal_id": payload(proposed)["proposal_id"]}
         )
     assert [tool.name for tool in tools] == sorted(TOOL_DESCRIPTIONS)
+    assert checked.is_error is False
+    assert any(item["rule"] == "plot.abandoned" for item in payload(checked))
     assert schema.is_error is False and schema.data["kinds"]
     assert outline.is_error is False and len(payload(outline)) == 4
     assert found.is_error is False and payload(found)[0]["id"] == "character/한도영"
     assert node.is_error is False and payload(node)[0]["title"] == "한도영"
     assert references.is_error is False and payload(references)[0]["rel"] == "present_at"
+    assert promise_board.is_error is False
+    assert payload(promise_board)[0]["id"] == "promise/숨은열쇠"
     assert proposed.is_error is False and payload(proposed)["status"] == "open"
     assert committed.is_error is False and payload(committed)["status"] == "accepted"
     by_name = {tool.name: tool for tool in tools}
     assert by_name["propose"].annotations.readOnlyHint is False
     assert by_name["commit"].annotations.destructiveHint is True
+    assert by_name["check"].annotations.readOnlyHint is True
+    assert by_name["promises"].annotations.readOnlyHint is True
 
 
 @pytest.mark.asyncio
@@ -76,7 +86,9 @@ async def test_stdio_process_connection(service) -> None:
     )
     async with Client(transport) as client:
         tools = await client.list_tools()
+        checked = await client.call_tool("check", {"scope": "book"})
         result = await client.call_tool("find", {"q": "도영"})
+        promise_board = await client.call_tool("promises", {"status": ["hypothetical"]})
         proposed = await client.call_tool(
             "propose",
             {
@@ -106,6 +118,10 @@ async def test_stdio_process_connection(service) -> None:
         )
     assert [tool.name for tool in tools] == sorted(TOOL_DESCRIPTIONS)
     assert result.is_error is False
+    assert checked.is_error is False
+    assert any(item["rule"] == "plot.abandoned" for item in payload(checked))
+    assert promise_board.is_error is False
+    assert payload(promise_board)[0]["status"] == "hypothetical"
     assert payload(result)[0]["id"] == "character/한도영"
     assert payload(committed)["status"] == "accepted"
     assert payload(latest)[0]["title"] == "stdio 직접 테스트"

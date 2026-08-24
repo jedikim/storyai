@@ -60,7 +60,7 @@ class RiskPolicy:
             kind = row["kind"] if row is not None else self._add_kind(operation, ontology)
             spec = ontology.edges.get(operation.field or "")
             current = (
-                self._field_value(row, operation.field or "")
+                self._field_value(connection, operation.target, row, operation.field or "")
                 if row is not None and operation.verb == "UPDATE"
                 else None
             )
@@ -133,7 +133,12 @@ class RiskPolicy:
             return None
 
     @staticmethod
-    def _field_value(row: sqlite3.Row, field: str) -> Any:
+    def _field_value(
+        connection: sqlite3.Connection,
+        node_id: str,
+        row: sqlite3.Row,
+        field: str,
+    ) -> Any:
         if field.startswith("props."):
             try:
                 props = json.loads(row["props"] or "{}")
@@ -145,6 +150,16 @@ class RiskPolicy:
                     return None
                 value = value.get(part)
             return value
+        collection_queries = {
+            "aliases": ("SELECT alias AS value FROM node_alias WHERE node = ?", "list"),
+            "tags": ("SELECT tag AS value FROM node_tag WHERE node = ?", "list"),
+            "features": ("SELECT name AS value FROM feature WHERE node = ?", "list"),
+            "visible_to": ("SELECT viewer AS value FROM visibility WHERE fact = ?", "list"),
+        }
+        if field in collection_queries:
+            sql, _ = collection_queries[field]
+            values = [item["value"] for item in connection.execute(sql, (node_id,)).fetchall()]
+            return values or None
         try:
             return row[field]
         except IndexError:

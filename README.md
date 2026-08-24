@@ -88,12 +88,13 @@ python3 build/build.py
 
 ## 구현 현황
 
-**P0 읽기 전용 인덱스**와 **P1 쓰기 경로**가 구현되어 있습니다. 조회 도구 다섯 개와
-`propose · commit`을 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌 판정을 거쳐
-단일 SQLite 커밋 레인에서 원자적으로 적용됩니다.
+**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**이 구현되어 있습니다.
+조회·진단·쓰기 도구 아홉 개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌 판정을
+거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P2의 12개 핵심 연속성 규칙과
+2개 그래프 불변식은 `spec/rules.json`의 SQL만 실행하며 LLM을 호출하지 않습니다.
 
-다음은 **P2 — 복선과 진단**입니다. 자세한 분해는
-[개발계획서 §P2](docs/03-개발계획서.html#p2)를 따릅니다.
+다음은 **P3 — 추출과 검색**입니다. 자세한 분해는
+[개발계획서 §P3](docs/03-개발계획서.html#p3)를 따릅니다.
 
 ## 개발 실행
 
@@ -129,3 +130,17 @@ ADD는 현재 `graph_state.revision`을 `{ "node": "book", "rev": n }`으로 전
 
 `story://session/latest`는 가장 최근 Session 노드를 가리킵니다. Session의 `props`에는
 `open_threads`와 `next`를 반드시 남겨 다음 호스트가 이어받을 수 있게 합니다.
+
+## P2 복선·연속성 계약
+
+Promise의 `props.status`는 `hypothetical → eligible → actualized` 순서로만 진행하며
+의도적 폐기는 `prevented`로 끝납니다. `eligible`에는 T, `actualized`에는 P가 필요합니다.
+`promises(status=["eligible"])`는 F–T–P와 부채, S-Eff, delta-Coh 근사치를 반환합니다.
+
+Fact의 가시성은 `visible_to`에 viewer, learned_at, pathway를 구조화해 기록합니다. Scene의
+`props.pre · post · forbid` 조건은 subject, field, op, value 형태이며, 발화 사실은
+`props.claims=[{"speaker": "character/…", "fact": "fact/…"}]`로 기록합니다. 이 구조를
+사용해야 `check`가 인지 시점·세계 규칙·사실 충돌을 SQL로 재현 가능하게 판정합니다.
+
+`causes`, `contains`, `extends`의 순환과 Scene당 두 번째 `focalizes` 간선은 제안 단계에서
+거부됩니다. 도달 불가 사건을 포함한 나머지 진단은 commit 결과와 `check`에서 확인합니다.

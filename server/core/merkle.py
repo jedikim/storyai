@@ -48,6 +48,20 @@ def node_content(connection: sqlite3.Connection, node_id: str) -> dict[str, Any]
             "SELECT name, data FROM feature WHERE node = ? ORDER BY name", (node_id,)
         ).fetchall()
     }
+    visibility = [
+        {
+            "viewer": item["viewer"],
+            "learned_at": item["learned_at"],
+            "pathway": item["pathway"],
+        }
+        for item in connection.execute(
+            """
+            SELECT viewer, learned_at, pathway
+            FROM visibility WHERE fact = ? ORDER BY viewer
+            """,
+            (node_id,),
+        ).fetchall()
+    ]
     edge_values = [
         {
             "rel": item["rel"],
@@ -70,7 +84,7 @@ def node_content(connection: sqlite3.Connection, node_id: str) -> dict[str, Any]
     fts = connection.execute(
         "SELECT body FROM node_fts WHERE id = ? ORDER BY rowid DESC LIMIT 1", (node_id,)
     ).fetchone()
-    return {
+    content = {
         "id": row["id"],
         "kind": row["kind"],
         "title": row["title"],
@@ -86,6 +100,9 @@ def node_content(connection: sqlite3.Connection, node_id: str) -> dict[str, Any]
         "locked": bool(row["locked"]),
         "body": fts["body"] if fts is not None else "",
     }
+    if visibility:
+        content["visible_to"] = visibility
+    return content
 
 
 def node_snapshot(connection: sqlite3.Connection, node_id: str) -> dict[str, Any]:

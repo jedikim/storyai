@@ -1,4 +1,4 @@
-"""Application service for the five P0 read-only tools."""
+"""Application service for the deterministic P0-P2 graph tools."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ from typing import Any, Literal
 from .address import AddressResolver
 from .budget import DEFAULT_MAX_CHARS, fit_response
 from .database import initialize_database
+from .diagnostics import DiagnosticEngine
 from .ontology import Ontology, OntologyError
+from .p2 import ContractService, PromiseService, VisibilityService
 from .traverse import GraphStore
 from .write_service import WriteService
 
@@ -34,10 +36,15 @@ class StoryService:
         self.rules_path = Path(rules_path).resolve()
         self.store = GraphStore(self.db_path, project_root=self.project_root)
         self.addresses = AddressResolver(self.ontology, self.store)
+        self.diagnostics = DiagnosticEngine(self.db_path, self.rules_path)
+        self.promise_store = PromiseService(self.db_path)
+        self.contracts = ContractService(self.db_path)
+        self.visibility_store = VisibilityService(self.db_path)
         self.writer = WriteService(
             db_path=self.db_path,
             ontology=self.ontology,
             policy_path=policy_path or self.project_root / "spec" / "policy.json",
+            rules_path=self.rules_path,
         )
 
     @classmethod
@@ -84,6 +91,58 @@ class StoryService:
         mode: Literal["apply", "dry_run"] = "apply",
     ) -> dict[str, Any]:
         return self.writer.commit(proposal_id, mode=mode)
+
+    def check(
+        self,
+        scope: str = "book",
+        *,
+        rules: list[str] | None = None,
+        severity: Literal["error", "warn", "info"] | None = None,
+        response_format: ResponseFormat = "concise",
+        max_chars: int = DEFAULT_MAX_CHARS,
+    ) -> Any:
+        self._response_format(response_format)
+        resolved_scope = (
+            None if scope in {"book", "story://book"} else self.addresses.resolve(scope)
+        )
+        result = self.diagnostics.check(
+            scope=resolved_scope,
+            rule_ids=rules,
+            severity=severity,
+        )
+        return fit_response(result, max_chars)
+
+    def promises(
+        self,
+        *,
+        status: list[str] | None = None,
+        as_of: int | None = None,
+        sort: Literal["debt", "age", "s_eff"] = "debt",
+        response_format: ResponseFormat = "concise",
+        max_chars: int = DEFAULT_MAX_CHARS,
+    ) -> Any:
+        self._response_format(response_format)
+        result = self.promise_store.list(statuses=status, as_of=as_of, sort=sort)
+        return fit_response(result, max_chars)
+
+    def feasible(self, scene: str, *, as_of: int | None = None) -> dict[str, Any]:
+        return self.contracts.feasible(self.addresses.resolve(scene), as_of=as_of)
+
+    def visibility(
+        self,
+        fact: str,
+        *,
+        character: str | None = None,
+        as_of: int = 0,
+        spoken: bool = False,
+    ) -> dict[str, Any]:
+        resolved_character = self.addresses.resolve(character) if character is not None else None
+        return self.visibility_store.classify(
+            self.addresses.resolve(fact),
+            character=resolved_character,
+            as_of=as_of,
+            spoken=spoken,
+        )
 
     def graph_schema(
         self,
