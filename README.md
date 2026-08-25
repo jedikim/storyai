@@ -88,13 +88,13 @@ python3 build/build.py
 
 ## 구현 현황
 
-**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**이 구현되어 있습니다.
-조회·진단·쓰기 도구 아홉 개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌 판정을
-거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P2의 12개 핵심 연속성 규칙과
-2개 그래프 불변식은 `spec/rules.json`의 SQL만 실행하며 LLM을 호출하지 않습니다.
+**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**이
+구현되어 있습니다. MCP 도구 14개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
+판정을 거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P3는 명시적 ID binding
+manifest와 UTF-8 byte span을 강제하고, BM25와 로컬 sqlite-vec 결과를 RRF로 결합합니다.
 
-다음은 **P3 — 추출과 검색**입니다. 자세한 분해는
-[개발계획서 §P3](docs/03-개발계획서.html#p3)를 따릅니다.
+다음은 **P4 — UI**입니다. 자세한 분해는
+[개발계획서 §P4](docs/03-개발계획서.html#p4)를 따릅니다.
 
 ## 개발 실행
 
@@ -110,9 +110,14 @@ YAML 메타데이터만 읽으며 내용을 추측하거나 자동 추출하지 
 
 ```bash
 .venv/bin/python -m server.load_bible
+.venv/bin/python -m server.consolidate
 .venv/bin/python -m pytest
 server/run-mcp.sh
 ```
+
+원고 추출은 `manuscript/**/*.md` 옆의 `*.story.json`을 입력으로 사용합니다. 형식과
+LLM 추출 계약은 [`prompts/v1/`](prompts/v1/)에 있으며, `ingest`는 Proposal만 만들고
+자동 커밋하지 않습니다.
 
 마지막 명령은 stdio MCP 서버이므로 터미널에 대기하는 것이 정상입니다. Claude Code와
 Codex는 각자의 프로젝트 설정을 통해 동일한 `server/run-mcp.sh` 엔트리포인트를

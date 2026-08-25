@@ -276,8 +276,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(
   id UNINDEXED, title, aliases, summary, body,
   tokenize = 'unicode61 remove_diacritics 2'
 );
--- 벡터는 sqlite-vec 로드 후:
---   CREATE VIRTUAL TABLE node_vec USING vec0(id TEXT PRIMARY KEY, emb float[1024]);
+
+-- sqlite-vec의 vec0 가상 테이블은 확장 로드 뒤 런타임에 생성한다. 이 매핑 테이블의
+-- vec_rowid를 동일한 vec0 rowid로 사용해 문자열 노드 주소와 벡터를 연결한다.
+CREATE TABLE IF NOT EXISTS node_embedding (
+  vec_rowid     INTEGER PRIMARY KEY AUTOINCREMENT,
+  node          TEXT NOT NULL UNIQUE REFERENCES node(id) ON DELETE CASCADE,
+  model         TEXT NOT NULL,
+  dims          INTEGER NOT NULL,
+  content_hash  TEXT NOT NULL,
+  vector        BLOB NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_embedding_hash ON node_embedding(content_hash);
 
 -- ═══════════════════════════════════════════════════════════
 -- 자주 쓰는 뷰
