@@ -377,17 +377,20 @@ class CascadeEngine:
             seen.add(current)
             row = connection.execute(
                 """
-                SELECT p.actor_kind, pa.on_behalf_of
-                FROM proposal AS p
-                LEFT JOIN proposal_actor AS pa ON pa.proposal = p.id
-                WHERE p.id = ?
+                SELECT parent_op.proposal AS parent
+                FROM cascade_item AS item
+                JOIN cascade_run AS run ON run.id = item.run
+                JOIN op AS parent_op ON parent_op.id = run.trigger_op
+                WHERE item.proposal = ?
+                ORDER BY run.ts DESC, run.id DESC
+                LIMIT 1
                 """,
                 (current,),
             ).fetchone()
-            if row is None or row["actor_kind"] != "cascade" or not row["on_behalf_of"]:
+            if row is None or not row["parent"]:
                 break
             iteration += 1
-            current = str(row["on_behalf_of"])
+            current = str(row["parent"])
         return iteration
 
     def _candidate(

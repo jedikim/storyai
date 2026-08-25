@@ -111,13 +111,18 @@ def test_transitive_dirty_order_and_proposal_gates(service: StoryService) -> Non
 
     b_proposal = result["cascade"]["proposals"][0]
     candidate = service.query(
-        "SELECT actor_kind, status FROM proposal WHERE id = :id",
+        """
+        SELECT p.actor_kind, p.status, pa.on_behalf_of
+        FROM proposal AS p JOIN proposal_actor AS pa ON pa.proposal = p.id
+        WHERE p.id = :id
+        """,
         params={"id": b_proposal},
     )["rows"][0]
-    assert candidate == ["cascade", "open"]
+    assert candidate == ["cascade", "open", None]
 
     b_result = service.commit(b_proposal)
     assert _node(service, "concept/B")["props"]["value"] == 2
+    assert b_result["cascade"]["iteration"] == 2
     assert len(b_result["cascade"]["proposals"]) == 1
     c_proposal = b_result["cascade"]["proposals"][0]
     service.commit(c_proposal)

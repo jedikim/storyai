@@ -381,7 +381,7 @@ class WriteService:
                 "session_id": f"cascade:{trigger_proposal}",
                 "actor_kind": "cascade",
                 "host": "codex",
-                "on_behalf_of": trigger_proposal,
+                "on_behalf_of": self._on_behalf_of(connection, trigger_proposal),
             }
         )
         operations = [self.applier.normalize(operation) for operation in request.ops]
