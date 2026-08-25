@@ -1,3 +1,3 @@
 """Public package entry points for storyai."""
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"

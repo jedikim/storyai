@@ -5,13 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 
 import uvicorn
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from storyai import __version__
 
@@ -33,6 +34,11 @@ class ProposalRequest(BaseModel):
 
 class ProjectSelectRequest(BaseModel):
     name: str
+
+
+class NodeSummaryRequest(BaseModel):
+    summary: str = Field(min_length=1, max_length=8_000)
+    rev: int = Field(ge=1)
 
 
 def create_ui_app(
@@ -139,6 +145,51 @@ def create_ui_app(
     @app.get("/api/nodes/{ref:path}")
     def node(ref: str, as_of: int | None = Query(default=None, ge=0)) -> dict:
         return data().node(ref, as_of=as_of)
+
+    @app.post("/api/nodes/{ref:path}/summary")
+    def update_node_summary(ref: str, request: NodeSummaryRequest) -> dict:
+        service_now = current()
+        data_now = UIDataStore(service_now)
+        node_now = data_now.node(ref)
+        if node_now["locked"]:
+            raise ValueError(f"canon 잠금 노드는 UI에서 편집할 수 없습니다: {node_now['id']}")
+        if node_now["rev"] != request.rev:
+            raise ValueError(
+                f"리비전 충돌: 요청 r{request.rev}, 현재 r{node_now['rev']}. 다시 읽어 주세요."
+            )
+        summary = request.summary.strip()
+        if not summary:
+            raise ValueError("설명은 비워 둘 수 없습니다")
+        if summary == (node_now["summary"] or ""):
+            raise ValueError("변경된 설명이 없습니다")
+        session_id = f"session/ui-summary-{uuid4().hex}"
+        proposal = service_now.propose(
+            ops=[
+                {
+                    "verb": "UPDATE",
+                    "target": node_now["id"],
+                    "field": "summary",
+                    "from": node_now["summary"],
+                    "to": summary,
+                    "idem_key": f"ui-summary-{uuid4().hex}",
+                }
+            ],
+            read_set=[{"node": node_now["id"], "rev": request.rev}],
+            rationale="UI에서 노드 설명 편집",
+            session_id=session_id,
+            actor_kind="human",
+            host="ui",
+        )
+        committed = service_now.commit(proposal["proposal_id"])
+        if committed["status"] != "accepted":
+            raise ValueError(
+                f"설명 저장이 승인되지 않았습니다: {committed['status']}. 다시 읽어 주세요."
+            )
+        return {
+            "proposal_id": proposal["proposal_id"],
+            "status": committed["status"],
+            "node": data_now.node(node_now["id"]),
+        }
 
     @app.get("/api/search")
     def search(q: str = Query(min_length=1), as_of: int | None = Query(default=None, ge=0)):

@@ -118,6 +118,65 @@ def test_review_queue_diff_impact_and_commit_flow(service: StoryService, tmp_pat
     assert service.get("character/한도영")[0]["summary"] == "UI 검수 큐에서 승인할 변경"
 
 
+def test_ui_edits_summary_through_human_proposal_and_commit(
+    service: StoryService,
+    tmp_path: Path,
+) -> None:
+    current = service.get("object/젖은장갑", include="full")[0]
+    with client_for(service, tmp_path) as client:
+        updated = client.post(
+            "/api/nodes/object/젖은장갑/summary",
+            json={"rev": current["rev"], "summary": "  UI에서 저장한 상세 설명.  "},
+        )
+        stale = client.post(
+            "/api/nodes/object/젖은장갑/summary",
+            json={"rev": current["rev"], "summary": "오래된 화면의 변경"},
+        )
+        queue = client.get("/api/proposals")
+
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "accepted"
+    assert updated.json()["node"]["summary"] == "UI에서 저장한 상세 설명."
+    assert updated.json()["node"]["rev"] == current["rev"] + 1
+    assert updated.json()["node"]["history"][0]["actor_kind"] == "human"
+    assert updated.json()["node"]["history"][0]["host"] == "ui"
+    assert updated.json()["node"]["history"][0]["rationale"] == "UI에서 노드 설명 편집"
+    assert stale.status_code == 400
+    assert "리비전 충돌" in stale.json()["detail"]
+    assert queue.json() == []
+
+
+def test_ui_refuses_summary_edits_for_locked_nodes(
+    service: StoryService,
+    tmp_path: Path,
+) -> None:
+    graph = service.writer.graph_revision()
+    proposal = service.propose(
+        ops=[
+            {
+                "verb": "ADD",
+                "target": "rule/UI잠금",
+                "to": {"kind": "Rule", "title": "UI 잠금 규칙", "summary": "변경 불가"},
+                "idem_key": "ui-locked-rule-001",
+            }
+        ],
+        read_set=[{"node": "book", "rev": graph["revision"]}],
+        rationale="UI locked summary test",
+        session_id="session/ui-locked-test",
+        host="test",
+    )
+    service.commit(proposal["proposal_id"])
+
+    with client_for(service, tmp_path) as client:
+        response = client.post(
+            "/api/nodes/rule/UI잠금/summary",
+            json={"rev": 1, "summary": "잠금 우회"},
+        )
+
+    assert response.status_code == 400
+    assert "canon 잠금" in response.json()["detail"]
+
+
 def test_ui_api_fails_closed_for_invalid_input(service: StoryService, tmp_path: Path) -> None:
     with client_for(service, tmp_path) as client:
         assert client.get("/api/graph", params={"as_of": -1}).status_code == 422

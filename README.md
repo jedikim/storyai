@@ -152,6 +152,8 @@ cd web && npm ci && npm run build && cd ..
 상단 프로젝트 선택기에서 등록된 소설을 전환하면 그래프·검색·복선·시간축·검수 큐가
 선택한 프로젝트 기준으로 다시 로드됩니다. `Session`처럼 온톨로지에서 `internal`로
 표시된 운영 노드는 서사 그래프·검색·카운트에 노출되지 않습니다.
+그래프에서 노드를 선택하면 오른쪽 상세 패널의 `설명`을 직접 편집할 수 있으며, 저장은
+현재 리비전을 기준으로 human/UI `propose → commit` 경로를 거쳐 편집 이력에 기록됩니다.
 
 원고 추출은 `manuscript/**/*.md` 옆의 `*.story.json`을 입력으로 사용합니다. 형식과
 LLM 추출 계약은 [`prompts/v1/`](prompts/v1/)에 있으며, `ingest`는 Proposal만 만들고

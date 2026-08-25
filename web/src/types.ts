@@ -107,6 +107,12 @@ export interface NodeDetail extends GraphNode {
   history: HistoryItem[];
 }
 
+export interface NodeUpdateResult {
+  proposal_id: string;
+  status: string;
+  node: NodeDetail;
+}
+
 export interface PromiseItem {
   id: string;
   title: string;
