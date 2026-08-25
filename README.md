@@ -15,8 +15,8 @@ skills/   에이전트가 읽을 것.  집필·검수·설정집 3종
 hooks/    자동 검사 트리거.  Claude Code / Codex 각각
 AGENTS.md 에이전트 지침 단일 소스 ★ 양쪽 호스트가 읽음
 
-manuscript/ api/ web/        ← 후속 단계에서 채웁니다
-server/ bible/ store/        ← P0 조회 + P1 제안/커밋 구현
+manuscript/ bible/ store/     원고·설정집·그래프 저장소
+server/ web/                 MCP·REST 코어 + React 검수 UI
 ```
 
 ## 문서
@@ -88,13 +88,15 @@ python3 build/build.py
 
 ## 구현 현황
 
-**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**이
+**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**, **P4 UI**가
 구현되어 있습니다. MCP 도구 14개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
 판정을 거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P3는 명시적 ID binding
 manifest와 UTF-8 byte span을 강제하고, BM25와 로컬 sqlite-vec 결과를 RRF로 결합합니다.
+P4는 같은 코어를 감싼 FastAPI REST 계층과 React Flow 그래프, F–T–P 복선 보드,
+이중 시간축, 출처를 구분하는 inline diff 검수 큐를 제공합니다.
 
-다음은 **P4 — UI**입니다. 자세한 분해는
-[개발계획서 §P4](docs/03-개발계획서.html#p4)를 따릅니다.
+다음은 **P5 — 전파·자동화 강화**입니다. 자세한 분해는
+[개발계획서 §P5](docs/03-개발계획서.html#p5)를 따릅니다.
 
 ## 개발 실행
 
@@ -114,6 +116,16 @@ YAML 메타데이터만 읽으며 내용을 추측하거나 자동 추출하지 
 .venv/bin/python -m pytest
 server/run-mcp.sh
 ```
+
+UI는 정적 번들을 빌드한 뒤 같은 Python 프로세스에서 실행합니다.
+
+```bash
+cd web && npm ci && npm run build && cd ..
+.venv/bin/storyai-ui
+```
+
+기본 주소는 `http://127.0.0.1:8765`입니다. 개발 중에는 별도 터미널에서
+`cd web && npm run dev`를 실행하면 `/api` 요청이 8765 포트로 프록시됩니다.
 
 원고 추출은 `manuscript/**/*.md` 옆의 `*.story.json`을 입력으로 사용합니다. 형식과
 LLM 추출 계약은 [`prompts/v1/`](prompts/v1/)에 있으며, `ingest`는 Proposal만 만들고
