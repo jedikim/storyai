@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "storyai",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "소설의 인물·소품·세계관 규칙·씬·복선을 타입 노드 그래프로 관리하고, 연속성과 미회수 복선을 진단합니다.",
   "author": { "name": "Jedi" },
   "license": "MIT",

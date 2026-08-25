@@ -2,6 +2,7 @@ import type {
   AppStatus,
   GraphPayload,
   NodeDetail,
+  NodeUpdateResult,
   PromiseItem,
   ProjectList,
   Proposal,
@@ -35,6 +36,11 @@ export const api = {
     request<NodeDetail>(
       `/api/nodes/${encodeURI(id)}${asOf === null ? "" : `?as_of=${asOf}`}`,
     ),
+  updateSummary: (id: string, rev: number, summary: string) =>
+    request<NodeUpdateResult>(`/api/nodes/${encodeURI(id)}/summary`, {
+      method: "POST",
+      body: JSON.stringify({ rev, summary }),
+    }),
   search: (query: string, asOf: number | null) =>
     request<SearchResult[]>(
       `/api/search?q=${encodeURIComponent(query)}${asOf === null ? "" : `&as_of=${asOf}`}`,

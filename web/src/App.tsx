@@ -13,6 +13,7 @@ import { formatBytes, formatDate } from "./format";
 import type {
   AppStatus,
   GraphPayload,
+  NodeDetail,
   PromiseItem,
   ProjectList,
   Proposal,
@@ -136,6 +137,17 @@ function App() {
     setView("graph");
   }
 
+  function updateNode(updated: NodeDetail) {
+    setGraph((value) => ({
+      ...value,
+      nodes: value.nodes.map((item) =>
+        item.id === updated.id
+          ? { ...item, summary: updated.summary, rev: updated.rev, origin: updated.origin }
+          : item,
+      ),
+    }));
+  }
+
   function toggleKind(kind: string) {
     setDisabledKinds((values) => {
       const next = new Set(values);
@@ -237,7 +249,14 @@ function App() {
               onAsOf={changeAsOf}
             />
             <GraphView graph={graph} selectedId={selectedId} disabledKinds={disabledKinds} onSelect={setSelectedId} />
-            <Inspector nodeId={selectedId} asOf={asOf} maxChapter={timeline.max_chapter} onSelect={selectNode} />
+            <Inspector
+              nodeId={selectedId}
+              asOf={asOf}
+              maxChapter={timeline.max_chapter}
+              onSelect={selectNode}
+              onClose={() => setSelectedId(null)}
+              onUpdated={updateNode}
+            />
           </div>
         )}
         {view === "promise" && <PromiseBoard items={promises} onSelect={selectNode} />}
