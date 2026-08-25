@@ -18,6 +18,7 @@ def _add_concept(
     *,
     source: str | None = None,
     locked: bool = False,
+    extra_reads: list[str] | None = None,
 ) -> dict[str, Any]:
     node_id = f"concept/{name}"
     props: dict[str, Any] = {"value": value}
@@ -31,6 +32,8 @@ def _add_concept(
             }
         ]
         read_set = [{"node": source, "rev": _node(service, source)["rev"]}]
+        for extra in extra_reads or []:
+            read_set.append({"node": extra, "rev": _node(service, extra)["rev"]})
     else:
         read_set = [{"node": "book", "rev": service.writer.graph_revision()["revision"]}]
     proposal = service.propose(
@@ -140,6 +143,27 @@ def test_prose_only_change_hits_typed_early_cutoff(service: StoryService) -> Non
     assert result["cascade"]["items"][0]["reason"].startswith(
         "typed_projection_unchanged"
     )
+
+
+def test_items_keep_topological_order_when_shortest_depth_ties(
+    service: StoryService,
+) -> None:
+    _add_concept(service, "Source", 1)
+    _add_concept(service, "ZParent", 1, source="concept/Source")
+    _add_concept(
+        service,
+        "AChild",
+        1,
+        source="concept/ZParent",
+        extra_reads=["concept/Source"],
+    )
+
+    result = _update(service, "concept/Source", "props.value", 1, 2, "topological")
+
+    assert [item["node"] for item in result["cascade"]["items"]] == [
+        "concept/ZParent",
+        "concept/AChild",
+    ]
 
 
 def test_cycle_rejects_by_default_and_opt_in_is_bounded(service: StoryService) -> None:

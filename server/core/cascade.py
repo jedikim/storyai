@@ -339,7 +339,7 @@ class CascadeEngine:
                 reason="proposal_ready",
                 diagnostics=diagnostics,
             )
-        plan.items = self._ordered_items(item_by_node)
+        plan.items = self._ordered_items(item_by_node, order=order)
         return plan
 
     def _dependencies(self, connection: sqlite3.Connection) -> list[Dependency]:
@@ -618,8 +618,21 @@ class CascadeEngine:
         }
 
     @staticmethod
-    def _ordered_items(items: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-        return sorted(items.values(), key=lambda item: (int(item["depth"]), str(item["node"])))
+    def _ordered_items(
+        items: dict[str, dict[str, Any]],
+        *,
+        order: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        positions = {node: index for index, node in enumerate(order or [])}
+        fallback = len(positions)
+        return sorted(
+            items.values(),
+            key=lambda item: (
+                positions.get(str(item["node"]), fallback),
+                int(item["depth"]),
+                str(item["node"]),
+            ),
+        )
 
     @staticmethod
     def _run_id() -> str:
