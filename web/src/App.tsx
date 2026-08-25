@@ -5,6 +5,7 @@ import { GraphView } from "./components/GraphView";
 import { Inspector } from "./components/Inspector";
 import { OmniSearch } from "./components/OmniSearch";
 import { PromiseBoard } from "./components/PromiseBoard";
+import { ProjectSwitcher } from "./components/ProjectSwitcher";
 import { ReviewQueue } from "./components/ReviewQueue";
 import { Sidebar } from "./components/Sidebar";
 import { TimelineView } from "./components/TimelineView";
@@ -13,6 +14,7 @@ import type {
   AppStatus,
   GraphPayload,
   PromiseItem,
+  ProjectList,
   Proposal,
   TimelinePayload,
   ViewName,
@@ -56,6 +58,8 @@ function defaultGraph(): GraphPayload {
   };
 }
 
+const EMPTY_PROJECTS: ProjectList = { mode: "list", selected: "", projects: [] };
+
 function App() {
   const [view, setView] = useState<ViewName>("graph");
   const [status, setStatus] = useState<AppStatus>(defaultStatus);
@@ -63,18 +67,23 @@ function App() {
   const [promises, setPromises] = useState<PromiseItem[]>([]);
   const [timeline, setTimeline] = useState<TimelinePayload>({ points: [], max_chapter: 1 });
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [projects, setProjects] = useState<ProjectList>(EMPTY_PROJECTS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [disabledKinds, setDisabledKinds] = useState<Set<string>>(new Set());
   const [asOf, setAsOf] = useState(1);
   const [theme, setTheme] = useState<Theme>("auto");
   const [loading, setLoading] = useState(true);
+  const [switchingProject, setSwitchingProject] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const filterRequest = useRef(0);
+  const loadRequest = useRef(0);
 
   const load = useCallback(async (chapter?: number) => {
+    const request = ++loadRequest.current;
     setLoading(true);
     setError(null);
     try {
+      const nextProjects = await api.projects();
       const [nextStatus, nextTimeline, nextProposals] = await Promise.all([
         api.health(),
         api.timeline(),
@@ -85,6 +94,8 @@ function App() {
         api.graph(nextAsOf),
         api.promises(nextAsOf),
       ]);
+      if (request !== loadRequest.current) return;
+      setProjects(nextProjects);
       setStatus(nextStatus);
       setTimeline(nextTimeline);
       setProposals(nextProposals);
@@ -92,9 +103,9 @@ function App() {
       setPromises(nextPromises);
       setAsOf(nextAsOf);
     } catch (reason) {
-      setError((reason as Error).message);
+      if (request === loadRequest.current) setError((reason as Error).message);
     } finally {
-      setLoading(false);
+      if (request === loadRequest.current) setLoading(false);
     }
   }, []);
 
@@ -153,13 +164,41 @@ function App() {
     setTheme((value) => (value === "auto" ? "light" : value === "light" ? "dark" : "auto"));
   }
 
+  async function selectProject(name: string) {
+    if (name === projects.selected) return;
+    setSwitchingProject(true);
+    setSelectedId(null);
+    setDisabledKinds(new Set());
+    setStatus(defaultStatus());
+    setGraph(defaultGraph());
+    setPromises([]);
+    setTimeline({ points: [], max_chapter: 1 });
+    setProposals([]);
+    filterRequest.current += 1;
+    loadRequest.current += 1;
+    try {
+      await api.selectProject(name);
+      await load();
+    } catch (reason) {
+      setError((reason as Error).message);
+      setLoading(false);
+    } finally {
+      setSwitchingProject(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#graph" onClick={() => setView("graph")} aria-label="storyai 홈">
           <span className="brand-mark">S</span>
-          <span><b>storyai</b><small>{status.book}</small></span>
+          <span><b>storyai</b><small>narrative graph</small></span>
         </a>
+        <ProjectSwitcher
+          projects={projects}
+          busy={switchingProject}
+          onSelect={(name) => void selectProject(name)}
+        />
         <nav className="view-tabs" aria-label="주요 보기">
           {VIEWS.map((item, index) => (
             <button
@@ -174,7 +213,7 @@ function App() {
             </button>
           ))}
         </nav>
-        <OmniSearch asOf={asOf} onSelect={selectNode} />
+        <OmniSearch key={projects.selected} asOf={asOf} onSelect={selectNode} />
         <button className="icon-button theme-button" onClick={cycleTheme} title={`테마: ${theme}`} aria-label={`테마 전환, 현재 ${theme}`}>
           {theme === "dark" ? "●" : theme === "light" ? "○" : "◐"}
         </button>

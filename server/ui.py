@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from storyai import __version__
 
 from .core.service import StoryService
-from .runtime import get_service
+from .runtime import get_service, manage_project
 from .ui_data import UIDataStore
 
 
@@ -29,6 +29,10 @@ class CommitRequest(BaseModel):
 
 class ProposalRequest(BaseModel):
     proposal_id: str
+
+
+class ProjectSelectRequest(BaseModel):
+    name: str
 
 
 def create_ui_app(
@@ -54,6 +58,42 @@ def create_ui_app(
     def data() -> UIDataStore:
         return UIDataStore(current())
 
+    def project_list() -> dict:
+        if service is None:
+            return manage_project(mode="list")
+        name = service.project_root.name
+        return {
+            "mode": "list",
+            "selected": name,
+            "projects": [
+                {
+                    "name": name,
+                    "root": str(service.project_root),
+                    "db": str(service.db_path),
+                    "selected": True,
+                    "available": True,
+                }
+            ],
+        }
+
+    def choose_project(name: str) -> dict:
+        if service is None:
+            return manage_project(mode="select", name=name)
+        current_name = service.project_root.name
+        if name != current_name:
+            raise ValueError(f"고정된 UI 프로젝트는 전환할 수 없습니다: {current_name}")
+        return {
+            "mode": "select",
+            "selected": current_name,
+            "project": {
+                "name": current_name,
+                "root": str(service.project_root),
+                "db": str(service.db_path),
+                "selected": True,
+                "available": True,
+            },
+        }
+
     @app.exception_handler(ValueError)
     def value_error(_: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -61,6 +101,36 @@ def create_ui_app(
     @app.get("/api/health")
     def health() -> dict:
         return data().status()
+
+    @app.get("/api/projects")
+    def projects() -> dict:
+        result = project_list()
+        return {
+            "mode": "list",
+            "selected": result["selected"],
+            "projects": [
+                {
+                    "name": item["name"],
+                    "selected": item["selected"],
+                    "available": item["available"],
+                }
+                for item in result["projects"]
+            ],
+        }
+
+    @app.post("/api/projects/select")
+    def select_project(request: ProjectSelectRequest) -> dict:
+        result = choose_project(request.name)
+        project = result["project"]
+        return {
+            "mode": "select",
+            "selected": result["selected"],
+            "project": {
+                "name": project["name"],
+                "selected": project["selected"],
+                "available": project["available"],
+            },
+        }
 
     @app.get("/api/graph")
     def graph(as_of: int | None = Query(default=None, ge=0)) -> dict:
@@ -72,8 +142,22 @@ def create_ui_app(
 
     @app.get("/api/search")
     def search(q: str = Query(min_length=1), as_of: int | None = Query(default=None, ge=0)):
-        values = current().find(q, as_of=as_of, mode="hybrid", limit=20)
-        return [{**item, "layer": current().ontology.kinds[item["kind"]].layer} for item in values]
+        service_now = current()
+        public_kinds = [
+            name
+            for name, specification in service_now.ontology.kinds.items()
+            if not specification.internal
+        ]
+        values = service_now.find(
+            q,
+            kind=public_kinds,
+            as_of=as_of,
+            mode="hybrid",
+            limit=20,
+        )
+        return [
+            {**item, "layer": service_now.ontology.kinds[item["kind"]].layer} for item in values
+        ]
 
     @app.get("/api/promises")
     def promises(as_of: int | None = Query(default=None, ge=0)) -> list[dict]:
