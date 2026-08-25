@@ -79,19 +79,28 @@ class StoryService:
         self.consolidator = OfflineConsolidator(self.db_path, self.embeddings)
 
     @classmethod
-    def from_environment(cls) -> StoryService:
-        default_root = Path(__file__).resolve().parents[2]
-        root = Path(os.environ.get("STORYAI_PROJECT_ROOT", default_root)).expanduser().resolve()
-        raw_db = os.environ.get("STORYAI_DB", str(root / "store" / "story.db"))
-        raw_db = raw_db.replace("${PROJECT_DIR}", str(root))
+    def for_project(
+        cls,
+        project_root: str | Path,
+        db_path: str | Path | None = None,
+    ) -> StoryService:
+        root = Path(project_root).expanduser().resolve()
         return cls(
             project_root=root,
-            db_path=raw_db,
+            db_path=db_path or root / "store" / "story.db",
             ontology_path=root / "spec" / "ontology.json",
             rules_path=root / "spec" / "rules.json",
             schema_path=root / "spec" / "schema.sql",
             policy_path=root / "spec" / "policy.json",
         )
+
+    @classmethod
+    def from_environment(cls) -> StoryService:
+        default_root = Path(__file__).resolve().parents[2]
+        root = Path(os.environ.get("STORYAI_PROJECT_ROOT", default_root)).expanduser().resolve()
+        raw_db = os.environ.get("STORYAI_DB", str(root / "store" / "story.db"))
+        raw_db = raw_db.replace("${PROJECT_DIR}", str(root))
+        return cls.for_project(root, raw_db)
 
     def propose(
         self,

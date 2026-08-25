@@ -28,7 +28,7 @@ server/ web/                 MCP·REST 코어 + React 검수 UI
 |---|---|---|
 | [index](docs/index.html) | 전체 지도, 핵심 결정 8개, 현황 | 모두 |
 | [01 기획서](docs/01-기획서.html) | 문제·근거 숫자·시장 빈틈·사용 시나리오 | 기획자 |
-| [02 설계서](docs/02-설계서.html) | 데이터 모델·MCP 툴 15개·버전관리·전파 | 개발자 |
+| [02 설계서](docs/02-설계서.html) | 데이터 모델·그래프 툴 15개·프로젝트 제어·전파 | 개발자 |
 | [03 개발계획서](docs/03-개발계획서.html) | P0~P6 로드맵·태스크 분해·리스크 | 개발자 |
 | [04 기술 스택](docs/04-기술스택.html) | 선택과 거부의 근거·의존성·참고문헌 | 개발자 |
 | [05 구조도](docs/05-구조도.html) | 다이어그램 11장 | 모두 |
@@ -41,7 +41,7 @@ server/ web/                 MCP·REST 코어 + React 검수 UI
 
 ```
 spec/ontology.json   노드 18종 · 간선 28종 · 태그 · 삼중 시간축 · 가시성 · 불변식
-spec/tools.json      MCP 툴 15개 시그니처 · 예산 · 위험 등급 정책
+spec/tools.json      MCP 툴 16개 시그니처 · 예산 · 위험 등급 정책
 spec/rules.json      진단 규칙 26개 (Tier 1 결정론 / Tier 2 LLM) · 전파 정책
 spec/policy.json     P1 변경 위험 등급 · 잠금 · 캐스케이드 임계값
 spec/schema.sql      DDL — 테이블 27 · 뷰 5 · 인덱스 23
@@ -90,7 +90,7 @@ python3 build/build.py
 
 **P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**, **P4 UI**,
 **P5 Domino v1**, **P6 Domino v2·다중 에이전트 운영**이 구현되어 있습니다.
-MCP 도구 15개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
+MCP 도구 16개(그래프 15개 + 프로젝트 제어 1개)를 제공하며, 모든 그래프 쓰기는 제안 기록과 `read_set` 충돌
 판정을 거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P3는 명시적 ID binding
 manifest와 UTF-8 byte span을 강제하고, BM25와 로컬 sqlite-vec 결과를 RRF로 결합합니다.
 P4는 같은 코어를 감싼 FastAPI REST 계층과 React Flow 그래프, F–T–P 복선 보드,
@@ -99,6 +99,26 @@ P5는 역방향 `read_set` 의존성, typed projection 조기 종료, 깊이·�
 적용하고, 결정론적 재도출 결과도 자동 반영하지 않고 `cascade` Proposal로 남깁니다.
 P6는 TTL advisory lease, 부모가 있는 에이전트 session branch, 그리고 commit 밖의 durable
 worker에서 실행되는 Tier-2 재도출을 추가합니다. P0~P6 로드맵이 모두 구현되었습니다.
+
+## 여러 소설 프로젝트
+
+한 MCP 프로세스는 여러 소설 프로젝트를 등록하고 현재 프로젝트를 전환할 수 있습니다.
+각 프로젝트는 독립적인 `manuscript/`, `bible/`, `spec/`, `store/story.db`를 가지며,
+선택 뒤 기존 그래프 도구 15개와 Tier-2 worker는 그 프로젝트에만 작동합니다.
+
+```text
+project(mode="current")
+project(mode="list")
+project(mode="create", name="novel-a", path="/absolute/path/novel-a")
+project(mode="register", name="existing", path="/absolute/path/existing")
+project(mode="select", name="novel-a")
+```
+
+`create`는 현재 프로젝트의 `spec/`을 템플릿으로 복사해 새 프로젝트를 만들고 즉시
+선택합니다. `register`도 완전한 기존 프로젝트를 검증한 뒤 선택합니다. 선택은 기본적으로
+시작 프로젝트의 `.storyai/projects.json`에 원자적으로 저장되어 MCP 재시작 후 복원됩니다.
+테스트나 별도 운영 레지스트리는 `STORYAI_PROJECTS_FILE`로 지정할 수 있습니다. 프로젝트
+전환은 진행 중인 다른 MCP 호출이 없을 때 수행하세요.
 
 ## 개발 실행
 

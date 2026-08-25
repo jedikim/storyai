@@ -1,10 +1,9 @@
-"""FastMCP stdio server exposing the P0-P6 story graph tool surface."""
+"""FastMCP stdio server exposing the story graph and project control surface."""
 
 from __future__ import annotations
 
 from fastmcp import FastMCP
 
-from .runtime import get_service
 from .tools.check import check
 from .tools.commit import commit
 from .tools.find import find
@@ -15,6 +14,7 @@ from .tools.ingest import ingest
 from .tools.lease import lease
 from .tools.neighborhood import neighborhood
 from .tools.outline import outline
+from .tools.project import project
 from .tools.promises import promises
 from .tools.propose import propose
 from .tools.query import query
@@ -22,7 +22,8 @@ from .tools.refs import refs
 from .tools.trace import trace
 
 INSTRUCTIONS = (
-    "storyai는 소설 설정과 서사 관계를 읽는 로컬 그래프입니다. "
+    "storyai는 프로젝트별 소설 설정과 서사 관계를 읽는 로컬 그래프입니다. "
+    "project(mode='current')로 현재 소설을 확인하고 필요하면 select한 뒤 작업하세요. "
     "outline 또는 find로 주소를 좁히고 get(include='brief')를 먼저 사용하세요. "
     "본문은 꼭 필요한 노드 하나에만 get(include='body')로 요청하세요. "
     "refs는 역방향 관계를 찾으며 soft 언급은 기본 제외됩니다."
@@ -78,6 +79,10 @@ TOOL_DESCRIPTIONS = {
         "복선의 F-T-P, 상태, 부채, S-Eff, delta-Coh 근사치를 조회합니다. "
         "집필 전에 eligible 상태만 필터링할 수 있습니다."
     ),
+    "project": (
+        "소설 프로젝트를 생성·등록·선택하거나 현재 선택과 목록을 조회합니다. "
+        "선택 뒤 모든 그래프 도구는 해당 프로젝트의 독립 DB에만 작동합니다."
+    ),
     "query": (
         "손으로 빚은 도구로 풀기 어려운 분석을 위해 단일 SELECT/WITH SQL을 읽기 전용, "
         "행 제한, 실행 예산과 함께 수행합니다."
@@ -94,7 +99,6 @@ TOOL_DESCRIPTIONS = {
 
 
 def create_server() -> FastMCP:
-    get_service()
     server = FastMCP(name="storyai", instructions=INSTRUCTIONS)
     functions = {
         "check": check,
@@ -109,13 +113,14 @@ def create_server() -> FastMCP:
         "outline": outline,
         "propose": propose,
         "promises": promises,
+        "project": project,
         "query": query,
         "refs": refs,
         "trace": trace,
     }
     for name in sorted(functions):
         annotations = {
-            "readOnlyHint": name not in {"propose", "commit", "ingest", "lease"},
+            "readOnlyHint": name not in {"propose", "commit", "ingest", "lease", "project"},
             "destructiveHint": name == "commit",
             "idempotentHint": True,
             "openWorldHint": False,

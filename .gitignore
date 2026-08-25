@@ -12,3 +12,5 @@ dist/
 build/lib/
 node_modules/
 .DS_Store
+.storyai/projects.json
+.storyai/projects.json.*
