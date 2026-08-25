@@ -20,18 +20,31 @@ class UIDataStore:
         self.service = service
         self.db_path = Path(service.db_path).resolve()
 
+    @property
+    def public_kinds(self) -> tuple[str, ...]:
+        return tuple(
+            name
+            for name, specification in self.service.ontology.kinds.items()
+            if not specification.internal
+        )
+
+    def _public_filter(self, column: str = "kind") -> tuple[str, list[str]]:
+        placeholders = ",".join("?" for _ in self.public_kinds)
+        return f"{column} IN ({placeholders})", list(self.public_kinds)
+
     def graph(self, *, as_of: int | None = None) -> dict[str, Any]:
         if as_of is not None and (isinstance(as_of, bool) or as_of < 0):
             raise ValueError("as_of는 0 이상의 정수여야 합니다")
         cutoff = "" if as_of is None else "AND (reveal_at IS NULL OR reveal_at <= ?)"
-        params: list[Any] = [] if as_of is None else [as_of]
+        public_filter, public_params = self._public_filter()
+        params: list[Any] = [*([] if as_of is None else [as_of]), *public_params]
         with connect_read_only(self.db_path) as connection:
             rows = connection.execute(
                 f"""
                 SELECT id, kind, title, summary, props, story_from, story_to, reveal_at,
                        origin, locked, rev
                 FROM live_node
-                WHERE 1=1 {cutoff}
+                WHERE 1=1 {cutoff} AND {public_filter}
                 ORDER BY COALESCE(story_from, reveal_at, 2147483647), kind, id
                 LIMIT ?
                 """,
@@ -137,6 +150,8 @@ class UIDataStore:
             raise ValueError(f"해당 시점에 공개되지 않은 노드입니다: {node_id}")
         full = full_values[0]
         body = body_values[0]
+        if self.service.ontology.kinds[full["kind"]].internal:
+            raise ValueError(f"UI에 공개되지 않는 운영 노드입니다: {node_id}")
         refs = self.service.refs(
             node_id,
             dir="both",
@@ -144,6 +159,18 @@ class UIDataStore:
             as_of=as_of,
             response_format="detailed",
         )
+        ref_nodes = self.service.store.get_nodes(
+            list(dict.fromkeys(item["id"] for item in refs)),
+            include="brief",
+            as_of=as_of,
+        )
+        ref_kinds = {item["id"]: item["kind"] for item in ref_nodes}
+        refs = [
+            {**item, "kind": ref_kinds[item["id"]]}
+            for item in refs
+            if item["id"] in ref_kinds
+            and not self.service.ontology.kinds[ref_kinds[item["id"]]].internal
+        ]
         with connect_read_only(self.db_path) as connection:
             history_rows = connection.execute(
                 """
@@ -209,23 +236,27 @@ class UIDataStore:
         return [{**item, "title": titles.get(item["id"], item["id"])} for item in values]
 
     def timeline(self) -> dict[str, Any]:
+        public_filter, public_params = self._public_filter()
         with connect_read_only(self.db_path) as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT id, kind, title, story_from, story_to, reveal_at
                 FROM live_node
                 WHERE story_from IS NOT NULL AND reveal_at IS NOT NULL
+                  AND {public_filter}
                 ORDER BY reveal_at, story_from, id
-                """
+                """,
+                public_params,
             ).fetchall()
             maximum_row = connection.execute(
-                """
+                f"""
                 SELECT MAX(value) AS value FROM (
-                  SELECT story_from AS value FROM live_node
-                  UNION ALL SELECT story_to FROM live_node
-                  UNION ALL SELECT reveal_at FROM live_node
+                  SELECT story_from AS value FROM live_node WHERE {public_filter}
+                  UNION ALL SELECT story_to FROM live_node WHERE {public_filter}
+                  UNION ALL SELECT reveal_at FROM live_node WHERE {public_filter}
                 )
-                """
+                """,
+                [*public_params, *public_params, *public_params],
             ).fetchone()
         points = [
             {
@@ -300,14 +331,37 @@ class UIDataStore:
         return result
 
     def status(self) -> dict[str, Any]:
+        public_filter, public_params = self._public_filter()
         with connect_read_only(self.db_path) as connection:
-            counts = connection.execute(
+            nodes = connection.execute(
+                f"SELECT COUNT(*) AS count FROM live_node WHERE {public_filter}",
+                public_params,
+            ).fetchone()
+            edges = connection.execute(
+                f"""
+                SELECT COUNT(*) AS count
+                FROM live_edge AS edge
+                JOIN live_node AS source ON source.id=edge.src
+                JOIN live_node AS target ON target.id=edge.dst
+                WHERE {public_filter.replace("kind", "source.kind")}
+                  AND {public_filter.replace("kind", "target.kind")}
+                """,
+                [*public_params, *public_params],
+            ).fetchone()
+            diagnostics = connection.execute(
+                f"""
+                SELECT COUNT(*) AS count
+                FROM diagnostic AS diagnostic
+                JOIN live_node AS node ON node.id=diagnostic.node
+                WHERE diagnostic.resolved_at IS NULL
+                  AND {public_filter.replace("kind", "node.kind")}
+                """,
+                public_params,
+            ).fetchone()
+            operations = connection.execute(
                 """
                 SELECT
-                  (SELECT COUNT(*) FROM live_node) AS nodes,
-                  (SELECT COUNT(*) FROM live_edge) AS edges,
                   (SELECT COUNT(*) FROM proposal WHERE status='open') AS pending,
-                  (SELECT COUNT(*) FROM diagnostic WHERE resolved_at IS NULL) AS diagnostics,
                   (SELECT MAX(updated_at) FROM node_embedding) AS indexed_at
                 """
             ).fetchone()
@@ -317,13 +371,13 @@ class UIDataStore:
             "book": self.service.project_root.name,
             "version": __version__,
             "connected": True,
-            "nodes": int(counts["nodes"]),
-            "edges": int(counts["edges"]),
-            "pending": int(counts["pending"]),
-            "diagnostics": int(counts["diagnostics"]),
+            "nodes": int(nodes["count"]),
+            "edges": int(edges["count"]),
+            "pending": int(operations["pending"]),
+            "diagnostics": int(diagnostics["count"]),
             "eligible_promises": eligible,
             "open_promises": eligible + hypothetical,
-            "indexed_at": counts["indexed_at"],
+            "indexed_at": operations["indexed_at"],
             "database_bytes": self.db_path.stat().st_size,
         }
 

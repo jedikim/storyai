@@ -3,6 +3,7 @@ import type {
   GraphPayload,
   NodeDetail,
   PromiseItem,
+  ProjectList,
   Proposal,
   SearchResult,
   TimelinePayload,
@@ -21,6 +22,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  projects: () => request<ProjectList>("/api/projects"),
+  selectProject: (name: string) =>
+    request<Record<string, unknown>>("/api/projects/select", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
   health: () => request<AppStatus>("/api/health"),
   graph: (asOf: number | null) =>
     request<GraphPayload>(`/api/graph${asOf === null ? "" : `?as_of=${asOf}`}`),

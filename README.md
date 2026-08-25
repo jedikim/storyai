@@ -149,6 +149,9 @@ cd web && npm ci && npm run build && cd ..
 
 기본 주소는 `http://127.0.0.1:8765`입니다. 개발 중에는 별도 터미널에서
 `cd web && npm run dev`를 실행하면 `/api` 요청이 8765 포트로 프록시됩니다.
+상단 프로젝트 선택기에서 등록된 소설을 전환하면 그래프·검색·복선·시간축·검수 큐가
+선택한 프로젝트 기준으로 다시 로드됩니다. `Session`처럼 온톨로지에서 `internal`로
+표시된 운영 노드는 서사 그래프·검색·카운트에 노출되지 않습니다.
 
 원고 추출은 `manuscript/**/*.md` 옆의 `*.story.json`을 입력으로 사용합니다. 형식과
 LLM 추출 계약은 [`prompts/v1/`](prompts/v1/)에 있으며, `ingest`는 Proposal만 만들고

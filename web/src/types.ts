@@ -2,6 +2,18 @@ export type Layer = "device" | "event" | "substance";
 export type Origin = "human" | "agent" | "cascade";
 export type ViewName = "graph" | "promise" | "timeline" | "review";
 
+export interface ProjectInfo {
+  name: string;
+  selected: boolean;
+  available: boolean;
+}
+
+export interface ProjectList {
+  mode: "list";
+  selected: string;
+  projects: ProjectInfo[];
+}
+
 export interface GraphNode {
   id: string;
   kind: string;

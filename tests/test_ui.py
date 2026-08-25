@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from server.core.service import StoryService
+from server.runtime import manage_project, reset_service
 from server.ui import create_ui_app
 
 
@@ -33,6 +34,8 @@ def test_ui_rest_reuses_graph_core_and_exposes_read_models(
         promises = client.get("/api/promises")
         timeline = client.get("/api/timeline")
         search = client.get("/api/search", params={"q": "도영"})
+        projects = client.get("/api/projects")
+        fixed_switch = client.post("/api/projects/select", json={"name": "other"})
         root = client.get("/")
 
     assert health.status_code == 200
@@ -59,6 +62,12 @@ def test_ui_rest_reuses_graph_core_and_exposes_read_models(
     assert timeline.json()["max_chapter"] == 5
     assert search.json()[0]["id"] == "character/한도영"
     assert search.json()[0]["layer"] == "substance"
+    assert projects.json() == {
+        "mode": "list",
+        "selected": "storyai",
+        "projects": [{"name": "storyai", "selected": True, "available": True}],
+    }
+    assert fixed_switch.status_code == 400
     assert "npm run dev" in root.json()["frontend"]
 
 
@@ -121,3 +130,94 @@ def test_ui_api_fails_closed_for_invalid_input(service: StoryService, tmp_path: 
     assert missing.status_code == 400
     assert empty_search.status_code == 422
     assert missing_proposal.status_code == 400
+
+
+def test_ui_hides_internal_session_nodes_from_story_graph_and_counts(
+    service: StoryService,
+    tmp_path: Path,
+) -> None:
+    graph = service.writer.graph_revision()
+    proposal = service.propose(
+        ops=[
+            {
+                "verb": "ADD",
+                "target": "session/2026-08-25T16-00-00Z-ui-internal",
+                "to": {
+                    "kind": "Session",
+                    "title": "UI 내부 운영 세션",
+                    "props": {
+                        "open_threads": ["다음 작업"],
+                        "next": ["서사 노드 작업"],
+                    },
+                },
+                "idem_key": "ui-internal-session-001",
+            }
+        ],
+        read_set=[{"node": "book", "rev": graph["revision"]}],
+        rationale="UI internal node filtering",
+        session_id="session/ui-internal-test",
+        host="test",
+    )
+    service.commit(proposal["proposal_id"])
+
+    with client_for(service, tmp_path) as client:
+        health = client.get("/api/health").json()
+        graph_payload = client.get("/api/graph").json()
+        search = client.get("/api/search", params={"q": "UI 내부 운영 세션"}).json()
+        detail = client.get("/api/nodes/session/2026-08-25T16-00-00Z-ui-internal")
+
+    assert (
+        len(
+            service.store.get_nodes(
+                ["session/2026-08-25T16-00-00Z-ui-internal"], include="brief", as_of=None
+            )
+        )
+        == 1
+    )
+    assert health["nodes"] == 4
+    assert len(graph_payload["nodes"]) == 4
+    assert "Session" not in graph_payload["kind_counts"]
+    assert all(item["kind"] != "Session" for item in graph_payload["nodes"])
+    assert all(item["kind"] != "Session" for item in search)
+    assert detail.status_code == 400
+    assert "운영 노드" in detail.json()["detail"]
+
+
+def test_ui_lists_and_switches_projects(
+    service: StoryService,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    registry = tmp_path / "ui-projects.json"
+    target = tmp_path / "novel-ui"
+    monkeypatch.setenv("STORYAI_PROJECT_ROOT", str(service.project_root))
+    monkeypatch.setenv("STORYAI_DB", str(service.db_path))
+    monkeypatch.setenv("STORYAI_PROJECTS_FILE", str(registry))
+    reset_service()
+    try:
+        manage_project(mode="create", name="UI 테스트 소설", path=str(target))
+        manage_project(mode="select", name="storyai")
+        with TestClient(create_ui_app(dist_dir=tmp_path / "missing-dist")) as client:
+            projects = client.get("/api/projects")
+            selected = client.post(
+                "/api/projects/select",
+                json={"name": "UI 테스트 소설"},
+            )
+            health = client.get("/api/health")
+            missing = client.post("/api/projects/select", json={"name": "missing"})
+
+        assert projects.status_code == 200
+        assert projects.json()["selected"] == "storyai"
+        assert {item["name"] for item in projects.json()["projects"]} == {
+            "storyai",
+            "UI 테스트 소설",
+        }
+        assert all("root" not in item and "db" not in item for item in projects.json()["projects"])
+        assert selected.status_code == 200
+        assert selected.json()["selected"] == "UI 테스트 소설"
+        assert "root" not in selected.json()["project"]
+        assert health.json()["book"] == "novel-ui"
+        assert health.json()["nodes"] == 0
+        assert missing.status_code == 400
+    finally:
+        reset_service()
