@@ -62,6 +62,18 @@ def test_project_registry_rejects_ambiguous_or_unsafe_inputs(
     with pytest.raises(ValueError, match="디렉터리가 불완전"):
         registry.manage(mode="register", name="incomplete", path=str(incomplete))
 
+    state = json.loads((tmp_path / "projects.json").read_text(encoding="utf-8"))
+    state["projects"]["incomplete"] = {
+        "root": str(incomplete),
+        "db": str(incomplete / "store" / "story.db"),
+    }
+    (tmp_path / "projects.json").write_text(json.dumps(state), encoding="utf-8")
+    listed = registry.manage(mode="list")
+    assert (
+        next(item for item in listed["projects"] if item["name"] == "incomplete")["available"]
+        is False
+    )
+
 
 def test_project_registry_fails_closed_on_invalid_selected_entry(
     project: Path,

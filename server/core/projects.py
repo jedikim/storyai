@@ -268,8 +268,10 @@ class ProjectRegistry:
     @staticmethod
     def _public(name: str, entry: dict[str, str], *, selected: bool) -> dict[str, Any]:
         root = Path(entry["root"])
-        available = root.is_dir() and all(
-            (root / "spec" / item).is_file() for item in _PROJECT_FILES
+        available = (
+            root.is_dir()
+            and all((root / item).is_dir() for item in _PROJECT_DIRS)
+            and all((root / "spec" / item).is_file() for item in _PROJECT_FILES)
         )
         return {
             "name": name,
