@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from .cascade import CascadeCandidate, CascadeEngine, CascadePlan
 from .database import connect_write
 from .diagnostics import DiagnosticEngine
 from .merkle import advance_graph_state, canonical_json, ensure_graph_state
@@ -45,9 +46,11 @@ class WriteService:
         self.policy = RiskPolicy(policy_path)
         self.diagnostics = DiagnosticEngine(self.db_path, rules_path)
         self.applier = OperationApplier(ontology)
+        self.cascade = CascadeEngine(rules_path, ontology)
         self._lock = _database_lock(self.db_path)
         with self._lock, connect_write(self.db_path) as connection:
             ensure_graph_state(connection)
+            self.cascade.backfill(connection)
 
     def propose(
         self,
@@ -77,94 +80,27 @@ class WriteService:
         normalized_reads = self._normalize_read_set(request.read_set)
         request = request.model_copy(update={"ops": operations, "read_set": normalized_reads})
         with self._lock, connect_write(self.db_path) as connection:
-            duplicate = self._idempotent_result(connection, operations)
-            if duplicate is not None:
-                return duplicate
-            self._require_read_coverage(operations, normalized_reads)
-            conflicts = self._detect_conflicts(connection, operations, normalized_reads)
-            pending = self._pending_overlap(connection, operations)
-            decision = self.policy.assess(connection, operations, self.ontology)
-            if decision.forbidden:
-                raise ProposalError("; ".join(decision.forbidden))
-            proposal_id = self._proposal_id()
-            now = datetime.now(UTC).isoformat()
-            connection.execute(
-                """
-                INSERT INTO proposal(
-                  id, actor_kind, model_id, session_id, host, rationale, read_set, status, ts
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)
-                """,
-                (
-                    proposal_id,
-                    request.actor_kind,
-                    request.model_id,
-                    request.session_id,
-                    request.host,
-                    request.rationale,
-                    canonical_json([item.model_dump(mode="json") for item in normalized_reads]),
-                    now,
-                ),
+            return self._store_proposal(
+                connection,
+                request=request,
+                operations=operations,
+                now=datetime.now(UTC).isoformat(),
             )
-            for index, operation in enumerate(operations):
-                connection.execute(
-                    """
-                    INSERT INTO op(
-                      proposal, seq, verb, target, field, from_val, to_val,
-                      basis_rev, idem_key, ts
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        proposal_id,
-                        index,
-                        operation.verb,
-                        operation.target,
-                        operation.field,
-                        self._wire_value(operation, "from_value"),
-                        self._wire_value(operation, "to_value"),
-                        operation.basis_rev,
-                        operation.idem_key,
-                        now,
-                    ),
-                )
-            connection.execute(
-                """
-                INSERT INTO proposal_assessment(
-                  proposal, risk, reasons, conflicts, pending_overlap
-                ) VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    proposal_id,
-                    decision.risk,
-                    canonical_json(decision.reasons),
-                    canonical_json(conflicts),
-                    canonical_json(pending),
-                ),
-            )
-            connection.execute(
-                "INSERT INTO proposal_actor(proposal, on_behalf_of) VALUES (?, ?)",
-                (proposal_id, request.on_behalf_of),
-            )
-            if not conflicts:
-                self._simulate(connection, proposal_id, request, operations, now)
-            return {
-                "proposal_id": proposal_id,
-                "status": "conflicted" if conflicts else "open",
-                "risk": decision.risk,
-                "reasons": list(decision.reasons),
-                "conflicts": conflicts,
-                "pending_overlap": pending,
-            }
 
     def commit(
         self,
         proposal_id: str,
         *,
         mode: Literal["apply", "dry_run"] = "apply",
+        allow_cycles: bool = False,
+        max_iterations: int | None = None,
     ) -> dict[str, Any]:
         if not isinstance(proposal_id, str) or not proposal_id.strip():
             raise ProposalError("proposal_id는 비어 있지 않은 문자열이어야 합니다")
         if mode not in {"apply", "dry_run"}:
             raise ProposalError("mode는 apply 또는 dry_run이어야 합니다")
+        if not isinstance(allow_cycles, bool):
+            raise ProposalError("allow_cycles는 bool이어야 합니다")
         with self._lock, connect_write(self.db_path) as connection:
             existing = connection.execute(
                 "SELECT result FROM commit_record WHERE proposal = ?", (proposal_id,)
@@ -193,6 +129,7 @@ class WriteService:
                     "graph_revision": int(graph["revision"]),
                     "root_cid": str(graph["root_cid"]),
                     "diagnostics": [],
+                    "cascade_id": None,
                 }
                 if mode == "apply":
                     connection.execute(
@@ -237,6 +174,41 @@ class WriteService:
                     )
                 diagnostics = self.diagnostics.evaluate(connection)
                 self.diagnostics.synchronize(connection, diagnostics, now)
+                connection.execute(
+                    "UPDATE proposal SET status = 'accepted' WHERE id = ?", (proposal_id,)
+                )
+                trigger_nodes = {
+                    str(item["target"])
+                    for item in applied
+                    if isinstance(item, dict) and item.get("target")
+                }
+                forced_nodes = {
+                    operation.target
+                    for operation in operations
+                    if operation.verb == "INVALIDATE"
+                }
+                forced_nodes.update(
+                    str(operation.to_value)
+                    for operation in operations
+                    if operation.verb in {"LINK", "UNLINK"}
+                )
+                trigger_nodes.update(forced_nodes)
+                cascade = self.cascade.plan(
+                    connection,
+                    trigger_proposal=proposal_id,
+                    trigger_nodes=trigger_nodes,
+                    forced_nodes=forced_nodes,
+                    diagnostics=diagnostics,
+                    allow_cycles=allow_cycles,
+                    max_iterations=max_iterations,
+                )
+                self._materialize_cascade(
+                    connection,
+                    plan=cascade,
+                    trigger_proposal=proposal_id,
+                    now=now,
+                )
+                self._persist_cascade(connection, cascade, now)
                 graph_revision, root_cid = advance_graph_state(connection, now)
                 result = {
                     "proposal_id": proposal_id,
@@ -246,14 +218,13 @@ class WriteService:
                     "graph_revision": graph_revision,
                     "root_cid": root_cid,
                     "diagnostics": diagnostics,
+                    "cascade_id": cascade.run_id,
+                    "cascade": self._cascade_result(cascade),
                 }
                 if mode == "dry_run":
                     connection.execute("ROLLBACK TO storyai_dry_run")
                     connection.execute("RELEASE storyai_dry_run")
                     return result
-                connection.execute(
-                    "UPDATE proposal SET status = 'accepted' WHERE id = ?", (proposal_id,)
-                )
                 connection.execute(
                     """
                     INSERT INTO commit_record(
@@ -275,6 +246,216 @@ class WriteService:
                 "SELECT revision, root_cid, updated_at FROM graph_state WHERE singleton = 1"
             ).fetchone()
         return dict(row) if row is not None else {}
+
+    def _store_proposal(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        request: ProposalInput,
+        operations: list[Operation],
+        now: str,
+    ) -> dict[str, Any]:
+        duplicate = self._idempotent_result(connection, operations)
+        if duplicate is not None:
+            return duplicate
+        reads = list(request.read_set)
+        self._require_read_coverage(operations, reads)
+        conflicts = self._detect_conflicts(connection, operations, reads)
+        pending = self._pending_overlap(connection, operations)
+        decision = self.policy.assess(connection, operations, self.ontology)
+        if decision.forbidden:
+            raise ProposalError("; ".join(decision.forbidden))
+        proposal_id = self._proposal_id()
+        connection.execute(
+            """
+            INSERT INTO proposal(
+              id, actor_kind, model_id, session_id, host, rationale, read_set, status, ts
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)
+            """,
+            (
+                proposal_id,
+                request.actor_kind,
+                request.model_id,
+                request.session_id,
+                request.host,
+                request.rationale,
+                canonical_json([item.model_dump(mode="json") for item in reads]),
+                now,
+            ),
+        )
+        self.cascade.index_proposal(connection, proposal_id, reads)
+        for index, operation in enumerate(operations):
+            connection.execute(
+                """
+                INSERT INTO op(
+                  proposal, seq, verb, target, field, from_val, to_val,
+                  basis_rev, idem_key, ts
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    proposal_id,
+                    index,
+                    operation.verb,
+                    operation.target,
+                    operation.field,
+                    self._wire_value(operation, "from_value"),
+                    self._wire_value(operation, "to_value"),
+                    operation.basis_rev,
+                    operation.idem_key,
+                    now,
+                ),
+            )
+        connection.execute(
+            """
+            INSERT INTO proposal_assessment(
+              proposal, risk, reasons, conflicts, pending_overlap
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                proposal_id,
+                decision.risk,
+                canonical_json(decision.reasons),
+                canonical_json(conflicts),
+                canonical_json(pending),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO proposal_actor(proposal, on_behalf_of) VALUES (?, ?)",
+            (proposal_id, request.on_behalf_of),
+        )
+        if not conflicts:
+            self._simulate(connection, proposal_id, request, operations, now)
+        return {
+            "proposal_id": proposal_id,
+            "status": "conflicted" if conflicts else "open",
+            "risk": decision.risk,
+            "reasons": list(decision.reasons),
+            "conflicts": conflicts,
+            "pending_overlap": pending,
+        }
+
+    def _materialize_cascade(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        plan: CascadePlan,
+        trigger_proposal: str,
+        now: str,
+    ) -> None:
+        for index, candidate in enumerate(plan.candidates):
+            savepoint = f"storyai_cascade_{index}"
+            connection.execute(f"SAVEPOINT {savepoint}")
+            try:
+                result = self._store_cascade_candidate(
+                    connection,
+                    candidate=candidate,
+                    trigger_proposal=trigger_proposal,
+                    now=now,
+                )
+            except (ValueError, sqlite3.IntegrityError) as exc:
+                connection.execute(f"ROLLBACK TO {savepoint}")
+                connection.execute(f"RELEASE {savepoint}")
+                item = self._cascade_item(plan, candidate.target)
+                item["status"] = "blocked"
+                item["reason"] = f"proposal_failed:{type(exc).__name__}:{exc}"
+                continue
+            connection.execute(f"RELEASE {savepoint}")
+            item = self._cascade_item(plan, candidate.target)
+            item["status"] = "proposed"
+            item["reason"] = f"candidate_{result['status']}"
+            item["proposal_id"] = result["proposal_id"]
+
+    def _store_cascade_candidate(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        candidate: CascadeCandidate,
+        trigger_proposal: str,
+        now: str,
+    ) -> dict[str, Any]:
+        request = ProposalInput.model_validate(
+            {
+                "ops": candidate.ops,
+                "read_set": candidate.read_set,
+                "rationale": candidate.rationale,
+                "session_id": f"cascade:{trigger_proposal}",
+                "actor_kind": "cascade",
+                "host": "codex",
+                "on_behalf_of": self._on_behalf_of(connection, trigger_proposal),
+            }
+        )
+        operations = [self.applier.normalize(operation) for operation in request.ops]
+        reads = self._normalize_read_set(request.read_set)
+        request = request.model_copy(update={"ops": operations, "read_set": reads})
+        return self._store_proposal(
+            connection,
+            request=request,
+            operations=operations,
+            now=now,
+        )
+
+    @staticmethod
+    def _cascade_item(plan: CascadePlan, target: str) -> dict[str, Any]:
+        for item in plan.items:
+            if item["node"] == target:
+                return item
+        raise RuntimeError(f"cascade item이 없습니다: {target}")
+
+    @staticmethod
+    def _persist_cascade(
+        connection: sqlite3.Connection,
+        plan: CascadePlan,
+        now: str,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO cascade_run(
+              id, trigger_op, depth_reached, nodes_visited, cutoff_hits, status, ts
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                plan.run_id,
+                plan.trigger_op,
+                plan.depth_reached,
+                plan.nodes_visited,
+                plan.cutoff_hits,
+                plan.status,
+                now,
+            ),
+        )
+        for index, item in enumerate(plan.items):
+            connection.execute(
+                """
+                INSERT INTO cascade_item(
+                  run, seq, node, depth, status, reason, proposal, diagnostics
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    plan.run_id,
+                    index,
+                    item["node"],
+                    item["depth"],
+                    item["status"],
+                    item["reason"],
+                    item["proposal_id"],
+                    canonical_json(item["diagnostics"]),
+                ),
+            )
+
+    @staticmethod
+    def _cascade_result(plan: CascadePlan) -> dict[str, Any]:
+        return {
+            "status": plan.status,
+            "depth_reached": plan.depth_reached,
+            "nodes_visited": plan.nodes_visited,
+            "cutoff_hits": plan.cutoff_hits,
+            "iteration": plan.iteration,
+            "max_tokens": plan.max_tokens,
+            "proposals": [
+                item["proposal_id"] for item in plan.items if item["proposal_id"] is not None
+            ],
+            "items": plan.items,
+        }
 
     def _simulate(
         self,

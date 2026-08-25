@@ -141,6 +141,16 @@ CREATE TABLE IF NOT EXISTS proposal (
 CREATE INDEX IF NOT EXISTS ix_proposal_status ON proposal(status, ts);
 CREATE INDEX IF NOT EXISTS ix_proposal_model  ON proposal(model_id);
 
+-- read_set JSON의 역방향 인덱스. Domino가 "이 노드를 읽은 도출물"을
+-- JSON 스캔 없이 찾고, 당시 읽은 리비전으로 early cutoff를 판정한다.
+CREATE TABLE IF NOT EXISTS proposal_read (
+  proposal      TEXT NOT NULL REFERENCES proposal(id) ON DELETE CASCADE,
+  node          TEXT NOT NULL,
+  rev           INTEGER NOT NULL,
+  PRIMARY KEY (proposal, node)
+);
+CREATE INDEX IF NOT EXISTS ix_proposal_read_node ON proposal_read(node, proposal);
+
 CREATE TABLE IF NOT EXISTS op (
   id            INTEGER PRIMARY KEY,
   proposal      TEXT NOT NULL REFERENCES proposal(id),
@@ -256,6 +266,19 @@ CREATE TABLE IF NOT EXISTS cascade_run (
   status        TEXT NOT NULL,                -- running|done|budget_exceeded|cycle
   ts            TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS cascade_item (
+  run           TEXT NOT NULL REFERENCES cascade_run(id) ON DELETE CASCADE,
+  seq           INTEGER NOT NULL,
+  node          TEXT NOT NULL,
+  depth         INTEGER NOT NULL,
+  status        TEXT NOT NULL,                -- dirty|cutoff|locked|proposed|blocked
+  reason        TEXT,
+  proposal      TEXT REFERENCES proposal(id),
+  diagnostics   TEXT NOT NULL DEFAULT '[]',
+  PRIMARY KEY (run, seq)
+);
+CREATE INDEX IF NOT EXISTS ix_cascade_item_node ON cascade_item(node, run);
 
 -- 동시 다중 에이전트에서만 사용. 스위칭 운용에서는 불필요
 CREATE TABLE IF NOT EXISTS lease (

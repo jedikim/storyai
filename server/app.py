@@ -1,4 +1,4 @@
-"""FastMCP stdio server exposing the deterministic P0-P3 tool surface."""
+"""FastMCP stdio server exposing the deterministic P0-P5 tool surface."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ TOOL_DESCRIPTIONS = {
     ),
     "commit": (
         "저장된 제안을 단일 SQLite 커밋 레인에서 원자적으로 적용하거나 dry_run 합니다. "
-        "충돌하면 어떤 변경도 적용하지 않습니다."
+        "충돌하면 어떤 변경도 적용하지 않으며 Domino 결과는 별도 Proposal로 남깁니다."
     ),
     "find": (
         "제목·별칭·요약·근거 본문을 BM25, 로컬 sqlite-vec dense, 또는 두 순위의 "

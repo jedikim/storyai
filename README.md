@@ -88,15 +88,18 @@ python3 build/build.py
 
 ## 구현 현황
 
-**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**, **P4 UI**가
+**P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**, **P4 UI**,
+**P5 Domino v1**이
 구현되어 있습니다. MCP 도구 14개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
 판정을 거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P3는 명시적 ID binding
 manifest와 UTF-8 byte span을 강제하고, BM25와 로컬 sqlite-vec 결과를 RRF로 결합합니다.
 P4는 같은 코어를 감싼 FastAPI REST 계층과 React Flow 그래프, F–T–P 복선 보드,
 이중 시간축, 출처를 구분하는 inline diff 검수 큐를 제공합니다.
+P5는 역방향 `read_set` 의존성, typed projection 조기 종료, 깊이·노드 예산과 순환 차단을
+적용하고, 결정론적 재도출 결과도 자동 반영하지 않고 `cascade` Proposal로 남깁니다.
 
-다음은 **P5 — 전파·자동화 강화**입니다. 자세한 분해는
-[개발계획서 §P5](docs/03-개발계획서.html#p5)를 따릅니다.
+다음은 **P6 — 운영·다중 에이전트 강화**입니다. 자세한 분해는
+[개발계획서 §P6](docs/03-개발계획서.html#p6)를 따릅니다.
 
 ## 개발 실행
 
@@ -161,3 +164,27 @@ Fact의 가시성은 `visible_to`에 viewer, learned_at, pathway를 구조화해
 
 `causes`, `contains`, `extends`의 순환과 Scene당 두 번째 `focalizes` 간선은 제안 단계에서
 거부됩니다. 도달 불가 사건을 포함한 나머지 진단은 commit 결과와 `check`에서 확인합니다.
+
+## P5 Domino 계약
+
+accepted Proposal의 `read_set`은 `proposal_read`에 역색인됩니다. 읽었던 노드의 typed
+projection이 바뀌면 그 결과를 쓴 노드가 dirty가 되며, 최대 깊이 3·노드 40 예산 안에서
+위상 순서로 전파됩니다. `title`, `summary`, `body` 같은 산문만 바뀐 경우에는 전파하지
+않습니다. 순환은 기본 거부하고, 명시적으로 `commit(allow_cycles=true,
+max_iterations=1..3)`을 호출한 경우에만 bounded mode를 사용합니다.
+
+LLM 없는 재도출은 대상 노드 `props._derive`에 명시한 typed copy만 수행합니다.
+
+```json
+{
+  "_derive": [{
+    "source": "fact/source",
+    "source_field": "props.object",
+    "target_field": "props.object",
+    "transform": "copy"
+  }]
+}
+```
+
+결과는 live 그래프에 바로 적용되지 않습니다. commit 응답의 `cascade.proposals`에
+`actor_kind="cascade"`인 새 Proposal이 들어가며, 이를 별도로 검수하고 commit해야 합니다.

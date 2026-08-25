@@ -230,5 +230,128 @@ async def test_stdio_process_connection(service) -> None:
     assert payload(latest)[0]["title"] == "stdio 직접 테스트"
 
 
+@pytest.mark.asyncio
+async def test_stdio_process_runs_p5_cascade_through_real_mcp(service) -> None:
+    root = Path(__file__).resolve().parents[1]
+    transport = StdioTransport(
+        command="bash",
+        args=[str(root / "server" / "run-mcp.sh")],
+        env={
+            "STORYAI_DB": str(service.db_path),
+            "STORYAI_PROJECT_ROOT": str(service.project_root),
+        },
+        cwd=str(root),
+    )
+    async with Client(transport) as client:
+        add_a = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "ADD",
+                        "target": "concept/McpA",
+                        "to": {
+                            "kind": "Concept",
+                            "title": "MCP source",
+                            "props": {"value": 1},
+                        },
+                        "idem_key": "stdio-p5-add-a-0001",
+                    }
+                ],
+                "read_set": [
+                    {"node": "book", "rev": service.writer.graph_revision()["revision"]}
+                ],
+                "rationale": "actual stdio P5 source",
+                "session_id": "session/stdio-p5",
+                "host": "test",
+            },
+        )
+        await client.call_tool("commit", {"proposal_id": payload(add_a)["proposal_id"]})
+        source = payload(
+            await client.call_tool("get", {"ref": "concept/McpA", "include": "full"})
+        )[0]
+        add_b = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "ADD",
+                        "target": "concept/McpB",
+                        "to": {
+                            "kind": "Concept",
+                            "title": "MCP derived",
+                            "props": {
+                                "value": 1,
+                                "_derive": [
+                                    {
+                                        "source": "concept/McpA",
+                                        "source_field": "props.value",
+                                        "target_field": "props.value",
+                                        "transform": "copy",
+                                    }
+                                ],
+                            },
+                        },
+                        "idem_key": "stdio-p5-add-b-0001",
+                    }
+                ],
+                "read_set": [{"node": "concept/McpA", "rev": source["rev"]}],
+                "rationale": "actual stdio P5 derived node",
+                "session_id": "session/stdio-p5",
+                "host": "test",
+            },
+        )
+        await client.call_tool("commit", {"proposal_id": payload(add_b)["proposal_id"]})
+        source = payload(
+            await client.call_tool("get", {"ref": "concept/McpA", "include": "full"})
+        )[0]
+        update_a = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "UPDATE",
+                        "target": "concept/McpA",
+                        "field": "props.value",
+                        "from": 1,
+                        "to": 2,
+                        "basis_rev": source["rev"],
+                        "idem_key": "stdio-p5-update-a-0001",
+                    }
+                ],
+                "read_set": [{"node": "concept/McpA", "rev": source["rev"]}],
+                "rationale": "actual stdio P5 trigger",
+                "session_id": "session/stdio-p5",
+                "host": "test",
+            },
+        )
+        cascade = await client.call_tool(
+            "commit", {"proposal_id": payload(update_a)["proposal_id"]}
+        )
+        cascade_payload = payload(cascade)
+        cascade_proposal = cascade_payload["cascade"]["proposals"][0]
+        candidate = await client.call_tool(
+            "query",
+            {
+                "sql": "SELECT actor_kind, status FROM proposal WHERE id=:id",
+                "params": {"id": cascade_proposal},
+            },
+        )
+        before = payload(
+            await client.call_tool("get", {"ref": "concept/McpB", "include": "full"})
+        )[0]
+        applied = await client.call_tool("commit", {"proposal_id": cascade_proposal})
+        after = payload(
+            await client.call_tool("get", {"ref": "concept/McpB", "include": "full"})
+        )[0]
+
+    assert cascade.is_error is False
+    assert cascade_payload["cascade"]["status"] == "done"
+    assert payload(candidate)["rows"] == [["cascade", "open"]]
+    assert before["props"]["value"] == 1
+    assert payload(applied)["status"] == "accepted"
+    assert after["props"]["value"] == 2
+
+
 def test_tool_descriptions_fit_two_kilobyte_budget() -> None:
     assert all(len(value.encode("utf-8")) < 2048 for value in TOOL_DESCRIPTIONS.values())
