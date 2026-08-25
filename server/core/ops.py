@@ -59,6 +59,8 @@ class OperationApplier:
         "tags",
         "features",
         "visible_to",
+        "body",
+        "evidence",
         "locked",
     }
     ADD_FIELDS = NODE_FIELDS | {"kind"}
@@ -106,9 +108,19 @@ class OperationApplier:
         elif operation.verb == "UPDATE":
             if operation.field == "props" and isinstance(operation.to_value, dict):
                 data["to_value"] = self._normalize_structured_refs(operation.to_value)
-            elif operation.field in {"props.F", "props.T", "props.P", "props.subject"}:
+            elif operation.field in {
+                "props.F",
+                "props.T",
+                "props.P",
+                "props.subject",
+                "props.location",
+            }:
                 if isinstance(operation.to_value, str):
                     data["to_value"] = normalize_node_id(operation.to_value, self.ontology)
+            elif operation.field == "props.characters":
+                data["to_value"] = self._normalize_structured_refs(
+                    {"characters": operation.to_value}
+                )["characters"]
             elif operation.field in {
                 "props.pre",
                 "props.post",
@@ -129,6 +141,13 @@ class OperationApplier:
         for field in ("F", "T", "P", "subject"):
             if isinstance(result.get(field), str):
                 result[field] = normalize_node_id(result[field], self.ontology)
+        if isinstance(result.get("location"), str):
+            result["location"] = normalize_node_id(result["location"], self.ontology)
+        if isinstance(result.get("characters"), list):
+            result["characters"] = [
+                normalize_node_id(value, self.ontology) if isinstance(value, str) else value
+                for value in result["characters"]
+            ]
         for phase in ("pre", "post", "forbid"):
             if isinstance(result.get(phase), list):
                 for condition in result[phase]:
@@ -223,6 +242,8 @@ class OperationApplier:
             raise MutationError("ADD.to.title은 비어 있지 않은 문자열이어야 합니다")
         if payload.get("summary") is not None and not isinstance(payload["summary"], str):
             raise MutationError("ADD.to.summary는 문자열 또는 null이어야 합니다")
+        if payload.get("body") is not None and not isinstance(payload["body"], str):
+            raise MutationError("ADD.to.body는 문자열이어야 합니다")
         if payload.get("locked") is not None and not isinstance(payload["locked"], bool):
             raise MutationError("ADD.to.locked는 bool이어야 합니다")
         reveal_at = payload.get("reveal_at")
@@ -231,6 +252,7 @@ class OperationApplier:
         ):
             raise MutationError("ADD.to.reveal_at은 0 이상의 정수 또는 null이어야 합니다")
         self._validate_detail_shapes(payload)
+        self._validate_evidence(payload.get("evidence", []))
         self._validate_story_range(payload.get("story_from"), payload.get("story_to"))
         props = dict(payload.get("props", {}))
         if kind == "Promise":
@@ -274,6 +296,10 @@ class OperationApplier:
                 source["kind"],
                 operation.to_value,
             )
+        if root == "body" and not isinstance(operation.to_value, str):
+            raise MutationError("body는 문자열이어야 합니다")
+        if root == "evidence":
+            self._validate_evidence(operation.to_value)
         if (
             root in {"story_from", "story_to", "reveal_at"}
             and operation.to_value is not None
@@ -411,10 +437,11 @@ class OperationApplier:
             operation.target,
             payload.get("visible_to", []),
         )
+        self._replace_evidence(connection, operation.target, payload.get("evidence", []))
         aliases = payload.get("aliases", [])
         connection.execute(
-            "INSERT INTO node_fts(id, title, aliases, summary, body) VALUES (?, ?, ?, ?, '')",
-            (operation.target, title, " ".join(aliases), summary),
+            "INSERT INTO node_fts(id, title, aliases, summary, body) VALUES (?, ?, ?, ?, ?)",
+            (operation.target, title, " ".join(aliases), summary, payload.get("body", "")),
         )
         cid = refresh_node_cid(connection, operation.target)
         record_revision(connection, operation.target, proposal_id=proposal_id)
@@ -465,6 +492,10 @@ class OperationApplier:
             self._replace_features(connection, operation.target, operation.to_value)
         elif root == "visible_to":
             self._replace_visibility(connection, operation.target, operation.to_value)
+        elif root == "body":
+            self._replace_body(connection, operation.target, operation.to_value)
+        elif root == "evidence":
+            self._replace_evidence(connection, operation.target, operation.to_value)
         else:
             connection.execute(
                 f"UPDATE node SET {root} = ? WHERE id = ?",
@@ -732,6 +763,28 @@ class OperationApplier:
                     (node_id,),
                 ).fetchall()
             ]
+        if field == "body":
+            value = connection.execute(
+                "SELECT body FROM node_fts WHERE id = ? ORDER BY rowid DESC LIMIT 1",
+                (node_id,),
+            ).fetchone()
+            return value["body"] if value is not None else ""
+        if field == "evidence":
+            return [
+                {
+                    "file": item["file"],
+                    "start": item["start_off"],
+                    "end": item["end_off"],
+                    "quote": item["quote"],
+                }
+                for item in connection.execute(
+                    """
+                    SELECT file, start_off, end_off, quote
+                    FROM evidence WHERE node = ? ORDER BY file, start_off, end_off
+                    """,
+                    (node_id,),
+                ).fetchall()
+            ]
         try:
             return row[field]
         except IndexError:
@@ -840,6 +893,38 @@ class OperationApplier:
                         require_references=require_references,
                     )
         if kind == "Scene":
+            boundary_fields = {"story_time", "location", "characters"}
+            if boundary_fields.intersection(props):
+                missing = sorted(boundary_fields - set(props))
+                if missing:
+                    raise MutationError("Scene 경계 계약 필드가 빠졌습니다: " + ", ".join(missing))
+                story_time = props["story_time"]
+                if not isinstance(story_time, (str, int)) or isinstance(story_time, bool):
+                    raise MutationError("Scene.props.story_time은 문자열 또는 정수여야 합니다")
+                self._require_reference(
+                    connection,
+                    props["location"],
+                    field="Scene.props.location",
+                    expected_kinds={"Location"},
+                    require_exists=require_references,
+                )
+                characters = props["characters"]
+                if not isinstance(characters, list) or not characters:
+                    raise MutationError(
+                        "Scene.props.characters는 비어 있지 않은 Character 주소 배열이어야 합니다"
+                    )
+                seen_characters: set[str] = set()
+                for index, character in enumerate(characters):
+                    normalized = self._require_reference(
+                        connection,
+                        character,
+                        field=f"Scene.props.characters[{index}]",
+                        expected_kinds={"Character"},
+                        require_exists=require_references,
+                    )
+                    if normalized in seen_characters:
+                        raise MutationError("Scene.props.characters에는 중복 주소가 없어야 합니다")
+                    seen_characters.add(normalized)
             self._validate_claims(
                 connection,
                 props.get("claims", []),
@@ -1030,6 +1115,32 @@ class OperationApplier:
             raise MutationError("props는 객체여야 합니다")
 
     @staticmethod
+    def _validate_evidence(value: Any) -> None:
+        if not isinstance(value, list):
+            raise MutationError("evidence는 객체 배열이어야 합니다")
+        for index, item in enumerate(value):
+            if not isinstance(item, dict) or set(item) != {"file", "start", "end", "quote"}:
+                raise MutationError(f"evidence[{index}]는 file, start, end, quote만 가져야 합니다")
+            file = item["file"]
+            if (
+                not isinstance(file, str)
+                or not file.strip()
+                or file.startswith(("/", "\\"))
+                or ".." in file.replace("\\", "/").split("/")
+            ):
+                raise MutationError(f"evidence[{index}].file은 안전한 상대 경로여야 합니다")
+            start = item["start"]
+            end = item["end"]
+            if any(
+                not isinstance(offset, int) or isinstance(offset, bool) for offset in (start, end)
+            ):
+                raise MutationError(f"evidence[{index}] 오프셋은 정수여야 합니다")
+            if start < 0 or end < start:
+                raise MutationError(f"evidence[{index}] 오프셋 범위가 잘못되었습니다")
+            if item["quote"] is not None and not isinstance(item["quote"], str):
+                raise MutationError(f"evidence[{index}].quote는 문자열 또는 null이어야 합니다")
+
+    @staticmethod
     def _validate_story_range(story_from: Any, story_to: Any) -> None:
         for name, value in (("story_from", story_from), ("story_to", story_to)):
             if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
@@ -1106,6 +1217,41 @@ class OperationApplier:
         connection.executemany(
             "INSERT INTO visibility(fact, viewer, learned_at, pathway) VALUES (?, ?, ?, ?)",
             values,
+        )
+
+    @staticmethod
+    def _replace_body(connection: sqlite3.Connection, node_id: str, body: str) -> None:
+        row = connection.execute(
+            "SELECT title, aliases, summary FROM node_fts WHERE id = ? ORDER BY rowid DESC LIMIT 1",
+            (node_id,),
+        ).fetchone()
+        if row is None:
+            node = connection.execute(
+                "SELECT title, summary FROM node WHERE id = ?", (node_id,)
+            ).fetchone()
+            title, summary, aliases = node["title"], node["summary"], ""
+        else:
+            title, summary, aliases = row["title"], row["summary"], row["aliases"]
+        connection.execute("DELETE FROM node_fts WHERE id = ?", (node_id,))
+        connection.execute(
+            "INSERT INTO node_fts(id, title, aliases, summary, body) VALUES (?, ?, ?, ?, ?)",
+            (node_id, title, aliases, summary, body),
+        )
+
+    @staticmethod
+    def _replace_evidence(
+        connection: sqlite3.Connection, node_id: str, evidence: list[dict[str, Any]]
+    ) -> None:
+        connection.execute("DELETE FROM evidence WHERE node = ?", (node_id,))
+        connection.executemany(
+            """
+            INSERT INTO evidence(node, file, start_off, end_off, quote)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (node_id, item["file"], item["start"], item["end"], item["quote"])
+                for item in evidence
+            ],
         )
 
     @staticmethod

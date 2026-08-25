@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "storyai"
-version = "0.3.0"
+version = "0.4.0"
 description = "A narrative knowledge graph and MCP server for long-form fiction continuity."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,7 @@ dependencies = [
   "fastmcp>=2,<5",
   "pydantic>=2,<3",
   "PyYAML>=6,<7",
+  "sqlite-vec==0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -23,10 +24,27 @@ dev = [
 
 [project.scripts]
 storyai-load-bible = "server.load_bible:main"
+storyai-consolidate = "server.consolidate:main"
 storyai-server = "server.app:main"
 
 [tool.setuptools.packages.find]
 include = ["server*", "storyai*"]
+
+[tool.setuptools.data-files]
+"spec" = [
+  "spec/ontology.json",
+  "spec/policy.json",
+  "spec/rules.json",
+  "spec/schema.sql",
+  "spec/tools.json",
+]
+"prompts/v1" = [
+  "prompts/v1/README.md",
+  "prompts/v1/entity.md",
+  "prompts/v1/fact.md",
+  "prompts/v1/manifest.schema.json",
+  "prompts/v1/scene.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

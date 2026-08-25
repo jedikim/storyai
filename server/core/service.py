@@ -1,4 +1,4 @@
-"""Application service for the deterministic P0-P2 graph tools."""
+"""Application service for the deterministic P0-P3 graph tools."""
 
 from __future__ import annotations
 
@@ -9,10 +9,15 @@ from typing import Any, Literal
 
 from .address import AddressResolver
 from .budget import DEFAULT_MAX_CHARS, fit_response
+from .consolidate import OfflineConsolidator
 from .database import initialize_database
 from .diagnostics import DiagnosticEngine
+from .embedding import EmbeddingIndex
+from .graph_tools import GraphAnalysis, QueryService
+from .ingest import IngestService
 from .ontology import Ontology, OntologyError
 from .p2 import ContractService, PromiseService, VisibilityService
+from .search import HybridSearch
 from .traverse import GraphStore
 from .write_service import WriteService
 
@@ -46,10 +51,35 @@ class StoryService:
             policy_path=policy_path or self.project_root / "spec" / "policy.json",
             rules_path=self.rules_path,
         )
+        self.embeddings = EmbeddingIndex(self.db_path)
+        self.embeddings.sync_all()
+        self.search = HybridSearch(
+            db_path=self.db_path,
+            graph=self.store,
+            embeddings=self.embeddings,
+        )
+        self.analysis = GraphAnalysis(
+            db_path=self.db_path,
+            graph=self.store,
+            search=self.search,
+            diagnostics=self.diagnostics,
+            device_kinds={
+                name for name, item in self.ontology.kinds.items() if item.layer == "device"
+            },
+        )
+        self.query_store = QueryService(self.db_path)
+        self.ingester = IngestService(
+            project_root=self.project_root,
+            db_path=self.db_path,
+            ontology=self.ontology,
+            writer=self.writer,
+        )
+        self.consolidator = OfflineConsolidator(self.db_path, self.embeddings)
 
     @classmethod
     def from_environment(cls) -> StoryService:
-        root = Path(__file__).resolve().parents[2]
+        default_root = Path(__file__).resolve().parents[2]
+        root = Path(os.environ.get("STORYAI_PROJECT_ROOT", default_root)).expanduser().resolve()
         raw_db = os.environ.get("STORYAI_DB", str(root / "store" / "story.db"))
         raw_db = raw_db.replace("${PROJECT_DIR}", str(root))
         return cls(
@@ -90,7 +120,10 @@ class StoryService:
         *,
         mode: Literal["apply", "dry_run"] = "apply",
     ) -> dict[str, Any]:
-        return self.writer.commit(proposal_id, mode=mode)
+        result = self.writer.commit(proposal_id, mode=mode)
+        if result["status"] == "accepted":
+            self.embeddings.sync_all()
+        return result
 
     def check(
         self,
@@ -196,21 +229,123 @@ class StoryService:
             raise ValueError("q는 비어 있지 않은 문자열이어야 합니다")
         if mode not in {"lexical", "semantic", "hybrid"}:
             raise ValueError("mode는 lexical, semantic, hybrid 중 하나여야 합니다")
-        if mode == "semantic":
-            raise ValueError(
-                "semantic 검색은 P3에서 제공됩니다. P0에서는 lexical 또는 hybrid를 사용하세요"
-            )
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
             raise ValueError("limit은 1~100 범위의 정수여야 합니다")
         self._as_of(as_of)
-        result = self.store.find(
+        result = self.search.find(
             q.strip(),
             kinds=self._kinds(kind),
             tags=self._tags(tag),
             as_of=as_of,
+            mode=mode,
             limit=limit,
         )
         return fit_response(result, max_chars)
+
+    def trace(
+        self,
+        source: str,
+        *,
+        target: str | None = None,
+        via: list[str] | None = None,
+        max_depth: int = 5,
+        k: int = 5,
+    ) -> list[dict[str, Any]]:
+        if (
+            not isinstance(max_depth, int)
+            or isinstance(max_depth, bool)
+            or not 1 <= max_depth <= 20
+        ):
+            raise ValueError("max_depth는 1~20 범위의 정수여야 합니다")
+        if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= 50:
+            raise ValueError("k는 1~50 범위의 정수여야 합니다")
+        relations = list(via or [])
+        if not all(isinstance(item, str) for item in relations):
+            raise ValueError("via는 간선 이름 배열이어야 합니다")
+        unknown = sorted(set(relations) - set(self.ontology.edges))
+        if unknown:
+            raise OntologyError(f"알 수 없는 간선 타입: {', '.join(unknown)}")
+        return self.analysis.trace(
+            self.addresses.resolve(source),
+            target=self.addresses.resolve(target) if target is not None else None,
+            relations=relations,
+            max_depth=max_depth,
+            k=k,
+        )
+
+    def neighborhood(
+        self,
+        intent: str,
+        *,
+        anchors: list[str] | None = None,
+        as_of: int | None = None,
+        budget_tokens: int = 4_000,
+    ) -> dict[str, Any]:
+        if not isinstance(intent, str) or not intent.strip():
+            raise ValueError("intent는 비어 있지 않은 문자열이어야 합니다")
+        if (
+            not isinstance(budget_tokens, int)
+            or isinstance(budget_tokens, bool)
+            or not 1 <= budget_tokens <= 100_000
+        ):
+            raise ValueError("budget_tokens는 1~100000 범위의 정수여야 합니다")
+        self._as_of(as_of)
+        values = anchors or []
+        if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
+            raise ValueError("anchors는 노드 주소 배열이어야 합니다")
+        return self.analysis.neighborhood(
+            intent.strip(),
+            anchors=[self.addresses.resolve(item) for item in values],
+            as_of=as_of,
+            budget_tokens=budget_tokens,
+        )
+
+    def impact(
+        self,
+        ref: str,
+        *,
+        change: dict[str, Any],
+        max_depth: int = 3,
+    ) -> dict[str, Any]:
+        if not isinstance(change, dict):
+            raise ValueError("change는 field와 to를 가진 객체여야 합니다")
+        if (
+            not isinstance(max_depth, int)
+            or isinstance(max_depth, bool)
+            or not 1 <= max_depth <= 20
+        ):
+            raise ValueError("max_depth는 1~20 범위의 정수여야 합니다")
+        return self.analysis.impact(
+            self.addresses.resolve(ref),
+            change=change,
+            max_depth=max_depth,
+        )
+
+    def query(
+        self,
+        sql: str,
+        *,
+        params: dict[str, Any] | None = None,
+        limit: int = 200,
+    ) -> dict[str, Any]:
+        if not isinstance(sql, str):
+            raise ValueError("sql은 문자열이어야 합니다")
+        if params is not None and not isinstance(params, dict):
+            raise ValueError("params는 이름 기반 파라미터 객체여야 합니다")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1_000:
+            raise ValueError("limit은 1~1000 범위의 정수여야 합니다")
+        return self.query_store.execute(sql, params=params, limit=limit)
+
+    def ingest(
+        self,
+        chapter: str,
+        *,
+        mode: Literal["extract", "reindex"] = "extract",
+    ) -> dict[str, Any]:
+        return self.ingester.ingest(chapter, mode=mode)
+
+    def consolidate(self) -> dict[str, int | str]:
+        return self.consolidator.run()
 
     def get(
         self,

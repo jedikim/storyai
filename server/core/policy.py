@@ -155,11 +155,18 @@ class RiskPolicy:
             "tags": ("SELECT tag AS value FROM node_tag WHERE node = ?", "list"),
             "features": ("SELECT name AS value FROM feature WHERE node = ?", "list"),
             "visible_to": ("SELECT viewer AS value FROM visibility WHERE fact = ?", "list"),
+            "evidence": ("SELECT file AS value FROM evidence WHERE node = ?", "list"),
         }
         if field in collection_queries:
             sql, _ = collection_queries[field]
             values = [item["value"] for item in connection.execute(sql, (node_id,)).fetchall()]
             return values or None
+        if field == "body":
+            value = connection.execute(
+                "SELECT body FROM node_fts WHERE id = ? ORDER BY rowid DESC LIMIT 1",
+                (node_id,),
+            ).fetchone()
+            return value["body"] if value is not None and value["body"] else None
         try:
             return row[field]
         except IndexError:

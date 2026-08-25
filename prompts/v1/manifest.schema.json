@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyai.local/prompts/v1/manifest.schema.json",
+  "title": "storyai extraction binding manifest v1",
+  "type": "object",
+  "required": ["version", "source_sha256", "nodes", "edges", "unresolved"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "source_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "unresolved": { "type": "array" }
+  },
+  "$defs": {
+    "span": {
+      "type": "object",
+      "required": ["start", "end", "quote"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "quote": { "type": "string" }
+      }
+    },
+    "visibility": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["viewer"],
+          "additionalProperties": false,
+          "properties": {
+            "viewer": { "type": "string", "minLength": 1 },
+            "learned_at": { "type": ["integer", "null"], "minimum": 0 },
+            "pathway": {
+              "type": "string",
+              "enum": ["direct", "observed", "told", "common"]
+            }
+          }
+        }
+      ]
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "title", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": ["string", "null"] },
+        "props": { "type": "object" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "features": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "visible_to": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/visibility" }
+        },
+        "story_from": { "type": ["integer", "null"] },
+        "story_to": { "type": ["integer", "null"] },
+        "reveal_at": { "type": ["integer", "null"], "minimum": 0 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/span" }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["src", "rel", "dst"],
+      "additionalProperties": false,
+      "properties": {
+        "src": { "type": "string", "minLength": 1 },
+        "rel": { "type": "string", "minLength": 1 },
+        "dst": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
