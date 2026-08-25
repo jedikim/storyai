@@ -1,4 +1,4 @@
-"""Application service for the deterministic P0-P3 graph tools."""
+"""Application service for the deterministic P0-P5 graph tools."""
 
 from __future__ import annotations
 
@@ -119,8 +119,15 @@ class StoryService:
         proposal_id: str,
         *,
         mode: Literal["apply", "dry_run"] = "apply",
+        allow_cycles: bool = False,
+        max_iterations: int | None = None,
     ) -> dict[str, Any]:
-        result = self.writer.commit(proposal_id, mode=mode)
+        result = self.writer.commit(
+            proposal_id,
+            mode=mode,
+            allow_cycles=allow_cycles,
+            max_iterations=max_iterations,
+        )
         if result["status"] == "accepted":
             self.embeddings.sync_all()
         return result

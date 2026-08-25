@@ -23,6 +23,8 @@ from .ui_data import UIDataStore
 class CommitRequest(BaseModel):
     proposal_id: str
     mode: Literal["apply", "dry_run"] = "apply"
+    allow_cycles: bool = False
+    max_iterations: int | None = None
 
 
 class ProposalRequest(BaseModel):
@@ -87,7 +89,12 @@ def create_ui_app(
 
     @app.post("/api/proposals/commit")
     def commit(request: CommitRequest) -> dict:
-        return current().commit(request.proposal_id, mode=request.mode)
+        return current().commit(
+            request.proposal_id,
+            mode=request.mode,
+            allow_cycles=request.allow_cycles,
+            max_iterations=request.max_iterations,
+        )
 
     @app.post("/api/proposals/impact")
     def proposal_impact(request: ProposalRequest) -> dict:
