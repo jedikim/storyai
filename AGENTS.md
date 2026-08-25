@@ -5,11 +5,13 @@
 
 ## 세션 시작 시 반드시
 
-1. `get("story://session/latest")` — 이전 세션의 `open_threads`와 `next`를 읽는다.
-2. `check(scope="book", severity="error")` — 미해결 진단을 먼저 확인한다.
-3. `promises(status=["eligible"])` — 회수 가능한 복선을 컨텍스트에 올린다.
+1. `project(mode="current")` — 현재 선택된 소설이 작업 대상인지 확인한다. 다르면
+   `project(mode="list")` 후 `project(mode="select", name="…")`로 먼저 전환한다.
+2. `get("story://session/latest")` — 이전 세션의 `open_threads`와 `next`를 읽는다.
+3. `check(scope="book", severity="error")` — 미해결 진단을 먼저 확인한다.
+4. `promises(status=["eligible"])` — 회수 가능한 복선을 컨텍스트에 올린다.
 
-이 셋을 건너뛰고 집필을 시작하지 마세요. 이전 턴이 다른 호스트였을 수 있고,
+이 넷을 건너뛰고 집필을 시작하지 마세요. 이전 턴이 다른 호스트였을 수 있고,
 그쪽 대화 이력은 남아 있지 않습니다.
 
 ## 세션 종료 시 반드시

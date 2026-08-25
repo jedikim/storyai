@@ -83,8 +83,10 @@ props:
 def project(tmp_path: Path) -> Path:
     root = tmp_path / "storyai"
     (root / "spec").mkdir(parents=True)
+    for folder in ("manuscript", "store"):
+        (root / folder).mkdir()
     source_spec = Path(__file__).resolve().parents[1] / "spec"
-    for name in ("schema.sql", "ontology.json", "rules.json", "policy.json"):
+    for name in ("schema.sql", "ontology.json", "rules.json", "policy.json", "tools.json"):
         shutil.copy2(source_spec / name, root / "spec" / name)
     for folder in ("characters", "scenes", "objects", "promises"):
         (root / "bible" / folder).mkdir(parents=True)

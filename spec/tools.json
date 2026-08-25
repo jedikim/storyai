@@ -1,6 +1,6 @@
 {
-  "$comment": "storyai MCP 툴 15개. 문서: docs/02-설계서.html#tools",
-  "version": "1.1.0",
+  "$comment": "storyai MCP 툴 16개 (그래프 15 + 프로젝트 제어 1). 문서: docs/02-설계서.html#tools",
+  "version": "1.2.0",
   "transport": "stdio",
   "budget": {
     "target_tokens": 8000,
@@ -17,6 +17,13 @@
     "$comment": "Codex MCP 클라이언트에 prompts 미구현. 나머지 셋은 2026-07-28에 deprecated"
   },
   "tools": [
+    { "name": "project", "group": "control", "readOnly": false, "destructive": false,
+      "summary": "소설 프로젝트 생성·등록·선택·조회",
+      "params": { "mode": "current|list|create|register|select",
+                  "name": "string?", "path": "absolute string?" },
+      "returns": "{ selected, project?, projects?[], graph? }",
+      "rule": "선택 뒤 모든 그래프 도구와 Tier-2 worker는 해당 독립 DB만 사용" },
+
     { "name": "graph_schema", "group": "navigate", "readOnly": true,
       "summary": "온톨로지를 런타임에 introspect",
       "params": { "section": { "enum": ["kinds","edges","tags","rules"], "optional": true } },

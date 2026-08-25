@@ -543,7 +543,7 @@ async def test_stdio_p6_lease_branch_and_tier2_worker_end_to_end(service) -> Non
             await client.call_tool("get", {"ref": "concept/McpP6Target", "include": "full"})
         )[0]
 
-    assert len(tools) == 15 and any(tool.name == "lease" for tool in tools)
+    assert len(tools) == 16 and any(tool.name == "lease" for tool in tools)
     assert payload(acquired)["acquired"] is True
     assert payload(conflict)["acquired"] is False
     assert payload(released)["released"] == 1
@@ -559,5 +559,168 @@ async def test_stdio_p6_lease_branch_and_tier2_worker_end_to_end(service) -> Non
     assert after["summary"] == "MCP Tier-2 summary"
 
 
+@pytest.mark.asyncio
+async def test_stdio_multi_project_create_switch_isolate_and_restart(service) -> None:
+    root = Path(__file__).resolve().parents[1]
+    registry = service.project_root.parent / "projects.json"
+    novel_a = service.project_root.parent / "novel-a"
+    novel_b = service.project_root.parent / "novel-b"
+
+    def transport() -> StdioTransport:
+        return StdioTransport(
+            command="bash",
+            args=[str(root / "server" / "run-mcp.sh")],
+            env={
+                "STORYAI_DB": str(service.db_path),
+                "STORYAI_PROJECT_ROOT": str(service.project_root),
+                "STORYAI_PROJECTS_FILE": str(registry),
+            },
+            cwd=str(root),
+        )
+
+    async def add_shared(client: Client, title: str, idem_key: str) -> dict:
+        revision = payload(
+            await client.call_tool(
+                "query", {"sql": "SELECT revision FROM graph_state WHERE singleton = 1"}
+            )
+        )["rows"][0][0]
+        proposed = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "ADD",
+                        "target": "concept/SharedProjectNode",
+                        "to": {"kind": "Concept", "title": title},
+                        "idem_key": idem_key,
+                    }
+                ],
+                "read_set": [{"node": "book", "rev": revision}],
+                "rationale": f"multi-project isolation: {title}",
+                "session_id": f"session/{idem_key}",
+                "host": "test",
+            },
+        )
+        return payload(
+            await client.call_tool("commit", {"proposal_id": payload(proposed)["proposal_id"]})
+        )
+
+    async with Client(transport()) as client:
+        tools = await client.list_tools()
+        initial = payload(await client.call_tool("project", {"mode": "current"}))
+        created_a = payload(
+            await client.call_tool(
+                "project", {"mode": "create", "name": "novel-a", "path": str(novel_a)}
+            )
+        )
+        committed_a = await add_shared(client, "Novel A value", "multi-project-a-0001")
+        created_b = payload(
+            await client.call_tool(
+                "project", {"mode": "create", "name": "novel-b", "path": str(novel_b)}
+            )
+        )
+        missing_in_b = await client.call_tool(
+            "get",
+            {"ref": "concept/SharedProjectNode", "include": "brief"},
+            raise_on_error=False,
+        )
+        committed_b = await add_shared(client, "Novel B value", "multi-project-b-0001")
+        selected_a = payload(
+            await client.call_tool("project", {"mode": "select", "name": "novel-a"})
+        )
+        value_a = payload(
+            await client.call_tool("get", {"ref": "concept/SharedProjectNode", "include": "brief"})
+        )[0]
+
+    async with Client(transport()) as client:
+        restarted = payload(await client.call_tool("project", {"mode": "current"}))
+        persisted_a = payload(
+            await client.call_tool("get", {"ref": "concept/SharedProjectNode", "include": "brief"})
+        )[0]
+        async with Client(transport()) as second_client:
+            selected_b = payload(
+                await second_client.call_tool("project", {"mode": "select", "name": "novel-b"})
+            )
+            value_b = payload(
+                await second_client.call_tool(
+                    "get", {"ref": "concept/SharedProjectNode", "include": "brief"}
+                )
+            )[0]
+        observed_switch = payload(await client.call_tool("project", {"mode": "current"}))
+        value_b_from_first_process = payload(
+            await client.call_tool("get", {"ref": "concept/SharedProjectNode", "include": "brief"})
+        )[0]
+        projects = payload(await client.call_tool("project", {"mode": "list"}))
+
+    assert len(tools) == 16 and any(tool.name == "project" for tool in tools)
+    assert initial["project"]["root"] == str(service.project_root)
+    assert created_a["selected"] == "novel-a" and created_a["graph"]["revision"] == 0
+    assert committed_a["status"] == "accepted"
+    assert created_b["selected"] == "novel-b" and created_b["graph"]["revision"] == 0
+    assert missing_in_b.is_error is True
+    assert committed_b["status"] == "accepted"
+    assert selected_a["project"]["root"] == str(novel_a)
+    assert value_a["title"] == "Novel A value"
+    assert restarted["selected"] == "novel-a"
+    assert persisted_a["title"] == "Novel A value"
+    assert selected_b["project"]["root"] == str(novel_b)
+    assert value_b["title"] == "Novel B value"
+    assert observed_switch["selected"] == "novel-b"
+    assert value_b_from_first_process["title"] == "Novel B value"
+    assert [item["name"] for item in projects["projects"]] == ["novel-a", "novel-b", "storyai"]
+    assert (novel_a / ".storyai" / "project.json").is_file()
+    assert (novel_b / "store" / "story.db").is_file()
+
+
+@pytest.mark.asyncio
+async def test_stdio_recovers_from_unavailable_selected_project(service) -> None:
+    root = Path(__file__).resolve().parents[1]
+    registry = service.project_root.parent / "unavailable-projects.json"
+    missing = service.project_root.parent / "missing-project"
+    registry.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "selected": "missing",
+                "projects": {
+                    "missing": {"root": str(missing), "db": str(missing / "store/story.db")},
+                    "storyai": {
+                        "root": str(service.project_root),
+                        "db": str(service.db_path),
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    transport = StdioTransport(
+        command="bash",
+        args=[str(root / "server" / "run-mcp.sh")],
+        env={
+            "STORYAI_DB": str(service.db_path),
+            "STORYAI_PROJECT_ROOT": str(service.project_root),
+            "STORYAI_PROJECTS_FILE": str(registry),
+        },
+        cwd=str(root),
+    )
+
+    async with Client(transport) as client:
+        listed = payload(await client.call_tool("project", {"mode": "list"}))
+        selected = payload(await client.call_tool("project", {"mode": "select", "name": "storyai"}))
+        node = payload(
+            await client.call_tool("get", {"ref": "character/한도영", "include": "brief"})
+        )[0]
+
+    by_name = {item["name"]: item for item in listed["projects"]}
+    assert listed["selected"] == "missing"
+    assert by_name["missing"]["available"] is False
+    assert selected["selected"] == "storyai"
+    assert node["title"] == "한도영"
+
+
 def test_tool_descriptions_fit_two_kilobyte_budget() -> None:
     assert all(len(value.encode("utf-8")) < 2048 for value in TOOL_DESCRIPTIONS.values())
+    specification = json.loads(
+        (Path(__file__).resolve().parents[1] / "spec" / "tools.json").read_text(encoding="utf-8")
+    )
+    assert sorted(item["name"] for item in specification["tools"]) == sorted(TOOL_DESCRIPTIONS)
