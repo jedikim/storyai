@@ -75,6 +75,7 @@ class ProposalInput(BaseModel):
     model_id: str | None = Field(default=None, max_length=200)
     host: Literal["claude-code", "codex", "ui", "test"] = "codex"
     on_behalf_of: str | None = Field(default=None, max_length=300)
+    parent_session_id: str | None = Field(default=None, max_length=300)
 
     @field_validator("rationale", "session_id")
     @classmethod
@@ -82,6 +83,16 @@ class ProposalInput(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("필수 문자열은 비어 있을 수 없습니다")
+        return value
+
+    @field_validator("parent_session_id")
+    @classmethod
+    def strip_optional(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("parent_session_id는 비어 있는 문자열일 수 없습니다")
         return value
 
     @model_validator(mode="after")

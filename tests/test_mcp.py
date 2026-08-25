@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import subprocess
+import sys
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -16,6 +21,25 @@ def payload(result):
     if result.data is not None:
         return result.data
     return json.loads(result.content[0].text)
+
+
+class RederiveHandler(BaseHTTPRequestHandler):
+    requests: list[dict] = []
+    idempotency_keys: list[str | None] = []
+
+    def do_POST(self) -> None:  # noqa: N802
+        length = int(self.headers.get("Content-Length", "0"))
+        self.requests.append(json.loads(self.rfile.read(length)))
+        self.idempotency_keys.append(self.headers.get("Idempotency-Key"))
+        body = json.dumps({"value": "MCP Tier-2 summary", "model_id": "test/mcp-rederive"}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args) -> None:
+        return
 
 
 def write_ingest_fixture(root: Path) -> None:
@@ -258,18 +282,16 @@ async def test_stdio_process_runs_p5_cascade_through_real_mcp(service) -> None:
                         "idem_key": "stdio-p5-add-a-0001",
                     }
                 ],
-                "read_set": [
-                    {"node": "book", "rev": service.writer.graph_revision()["revision"]}
-                ],
+                "read_set": [{"node": "book", "rev": service.writer.graph_revision()["revision"]}],
                 "rationale": "actual stdio P5 source",
                 "session_id": "session/stdio-p5",
                 "host": "test",
             },
         )
         await client.call_tool("commit", {"proposal_id": payload(add_a)["proposal_id"]})
-        source = payload(
-            await client.call_tool("get", {"ref": "concept/McpA", "include": "full"})
-        )[0]
+        source = payload(await client.call_tool("get", {"ref": "concept/McpA", "include": "full"}))[
+            0
+        ]
         add_b = await client.call_tool(
             "propose",
             {
@@ -302,9 +324,9 @@ async def test_stdio_process_runs_p5_cascade_through_real_mcp(service) -> None:
             },
         )
         await client.call_tool("commit", {"proposal_id": payload(add_b)["proposal_id"]})
-        source = payload(
-            await client.call_tool("get", {"ref": "concept/McpA", "include": "full"})
-        )[0]
+        source = payload(await client.call_tool("get", {"ref": "concept/McpA", "include": "full"}))[
+            0
+        ]
         update_a = await client.call_tool(
             "propose",
             {
@@ -337,13 +359,13 @@ async def test_stdio_process_runs_p5_cascade_through_real_mcp(service) -> None:
                 "params": {"id": cascade_proposal},
             },
         )
-        before = payload(
-            await client.call_tool("get", {"ref": "concept/McpB", "include": "full"})
-        )[0]
+        before = payload(await client.call_tool("get", {"ref": "concept/McpB", "include": "full"}))[
+            0
+        ]
         applied = await client.call_tool("commit", {"proposal_id": cascade_proposal})
-        after = payload(
-            await client.call_tool("get", {"ref": "concept/McpB", "include": "full"})
-        )[0]
+        after = payload(await client.call_tool("get", {"ref": "concept/McpB", "include": "full"}))[
+            0
+        ]
 
     assert cascade.is_error is False
     assert cascade_payload["cascade"]["status"] == "done"
@@ -351,6 +373,190 @@ async def test_stdio_process_runs_p5_cascade_through_real_mcp(service) -> None:
     assert before["props"]["value"] == 1
     assert payload(applied)["status"] == "accepted"
     assert after["props"]["value"] == 2
+
+
+@pytest.mark.asyncio
+async def test_stdio_p6_lease_branch_and_tier2_worker_end_to_end(service) -> None:
+    root = Path(__file__).resolve().parents[1]
+
+    def transport() -> StdioTransport:
+        return StdioTransport(
+            command="bash",
+            args=[str(root / "server" / "run-mcp.sh")],
+            env={
+                "STORYAI_DB": str(service.db_path),
+                "STORYAI_PROJECT_ROOT": str(service.project_root),
+            },
+            cwd=str(root),
+        )
+
+    async with Client(transport()) as client:
+        tools = await client.list_tools()
+        acquired = await client.call_tool(
+            "lease",
+            {
+                "mode": "acquire",
+                "scope": "scene/A6.C01.*",
+                "session_id": "session/mcp-p6-a",
+                "ttl_sec": 900,
+            },
+        )
+        conflict = await client.call_tool(
+            "lease",
+            {
+                "mode": "acquire",
+                "scope": "scene/A6.C01.S01",
+                "session_id": "session/mcp-p6-b",
+            },
+        )
+        released = await client.call_tool(
+            "lease",
+            {
+                "mode": "release",
+                "scope": "scene/A6.C01.*",
+                "session_id": "session/mcp-p6-a",
+            },
+        )
+        add_source = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "ADD",
+                        "target": "concept/McpP6Source",
+                        "to": {
+                            "kind": "Concept",
+                            "title": "MCP P6 source",
+                            "props": {"value": 1},
+                        },
+                        "idem_key": "mcp-p6-add-source-0001",
+                    }
+                ],
+                "read_set": [{"node": "book", "rev": service.writer.graph_revision()["revision"]}],
+                "rationale": "MCP P6 source",
+                "session_id": "session/mcp-p6-human",
+                "actor_kind": "human",
+                "host": "test",
+            },
+        )
+        await client.call_tool("commit", {"proposal_id": payload(add_source)["proposal_id"]})
+        source = payload(
+            await client.call_tool("get", {"ref": "concept/McpP6Source", "include": "full"})
+        )[0]
+        add_target = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "ADD",
+                        "target": "concept/McpP6Target",
+                        "to": {
+                            "kind": "Concept",
+                            "title": "MCP P6 target",
+                            "summary": "MCP original human summary",
+                            "props": {
+                                "_rederive": [
+                                    {
+                                        "sources": ["concept/McpP6Source"],
+                                        "target_field": "summary",
+                                        "instruction": "Update the summary from the changed fact.",
+                                        "max_tokens": 200,
+                                    }
+                                ]
+                            },
+                        },
+                        "idem_key": "mcp-p6-add-target-0001",
+                    }
+                ],
+                "read_set": [{"node": "concept/McpP6Source", "rev": source["rev"]}],
+                "rationale": "MCP P6 human target",
+                "session_id": "session/mcp-p6-human",
+                "actor_kind": "human",
+                "host": "test",
+            },
+        )
+        await client.call_tool("commit", {"proposal_id": payload(add_target)["proposal_id"]})
+        source = payload(
+            await client.call_tool("get", {"ref": "concept/McpP6Source", "include": "full"})
+        )[0]
+        trigger = await client.call_tool(
+            "propose",
+            {
+                "ops": [
+                    {
+                        "verb": "UPDATE",
+                        "target": "concept/McpP6Source",
+                        "field": "props.value",
+                        "from": 1,
+                        "to": 2,
+                        "basis_rev": source["rev"],
+                        "idem_key": "mcp-p6-trigger-0001",
+                    }
+                ],
+                "read_set": [{"node": "concept/McpP6Source", "rev": source["rev"]}],
+                "rationale": "MCP P6 Tier-2 trigger",
+                "session_id": "session/mcp-p6-trigger",
+                "host": "test",
+            },
+        )
+        queued = await client.call_tool("commit", {"proposal_id": payload(trigger)["proposal_id"]})
+
+    RederiveHandler.requests = []
+    RederiveHandler.idempotency_keys = []
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), RederiveHandler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    worker_env = {
+        **os.environ,
+        "STORYAI_DB": str(service.db_path),
+        "STORYAI_PROJECT_ROOT": str(service.project_root),
+        "STORYAI_REDERIVE_ENDPOINT": f"http://127.0.0.1:{httpd.server_port}/rederive",
+    }
+    try:
+        worker = subprocess.run(
+            [sys.executable, "-m", "server.cascade_worker", "--limit", "1"],
+            cwd=root,
+            env=worker_env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        httpd.shutdown()
+        thread.join(timeout=5)
+        httpd.server_close()
+    worker_result = json.loads(worker.stdout)[0]
+
+    async with Client(transport()) as client:
+        before = payload(
+            await client.call_tool("get", {"ref": "concept/McpP6Target", "include": "full"})
+        )[0]
+        job = await client.call_tool(
+            "query",
+            {
+                "sql": "SELECT status, proposal FROM cascade_job WHERE id=:id",
+                "params": {"id": payload(queued)["cascade"]["jobs"][0]},
+            },
+        )
+        committed = await client.call_tool("commit", {"proposal_id": worker_result["proposal_id"]})
+        after = payload(
+            await client.call_tool("get", {"ref": "concept/McpP6Target", "include": "full"})
+        )[0]
+
+    assert len(tools) == 15 and any(tool.name == "lease" for tool in tools)
+    assert payload(acquired)["acquired"] is True
+    assert payload(conflict)["acquired"] is False
+    assert payload(released)["released"] == 1
+    assert payload(queued)["cascade"]["jobs"]
+    assert worker_result["status"] == "proposed"
+    assert RederiveHandler.requests[0]["original_human_node"]["summary"] == (
+        "MCP original human summary"
+    )
+    assert RederiveHandler.idempotency_keys == [payload(queued)["cascade"]["jobs"][0]]
+    assert payload(job)["rows"] == [["proposed", worker_result["proposal_id"]]]
+    assert before["summary"] == "MCP original human summary"
+    assert payload(committed)["status"] == "accepted"
+    assert after["summary"] == "MCP Tier-2 summary"
 
 
 def test_tool_descriptions_fit_two_kilobyte_budget() -> None:

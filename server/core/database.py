@@ -22,6 +22,7 @@ def initialize_database(db_path: str | Path, schema_path: str | Path) -> Path:
     connection = sqlite3.connect(database)
     try:
         connection.executescript(schema.read_text(encoding="utf-8"))
+        _apply_schema_migrations(connection)
         connection.commit()
     except (OSError, sqlite3.Error) as exc:
         connection.rollback()
@@ -29,6 +30,17 @@ def initialize_database(db_path: str | Path, schema_path: str | Path) -> Path:
     finally:
         connection.close()
     return database
+
+
+def _apply_schema_migrations(connection: sqlite3.Connection) -> None:
+    """Apply additive migrations that CREATE TABLE IF NOT EXISTS cannot express."""
+    cascade_columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(cascade_job)")}
+    if cascade_columns and "target_rev" not in cascade_columns:
+        connection.execute(
+            "ALTER TABLE cascade_job ADD COLUMN target_rev INTEGER NOT NULL DEFAULT 0"
+        )
+    if cascade_columns and "claim_token" not in cascade_columns:
+        connection.execute("ALTER TABLE cascade_job ADD COLUMN claim_token TEXT")
 
 
 @contextmanager

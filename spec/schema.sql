@@ -219,6 +219,21 @@ CREATE TABLE IF NOT EXISTS proposal_actor (
   on_behalf_of  TEXT
 );
 
+-- session_id별 Proposal 작업선. Proposal은 이 브랜치에 격리되어 있다가 commit 시
+-- main graph revision으로 병합된다. Git 브랜치가 아니라 그래프 작업 세션 메타데이터다.
+CREATE TABLE IF NOT EXISTS session_branch (
+  id            TEXT PRIMARY KEY,
+  parent        TEXT REFERENCES session_branch(id),
+  base_revision INTEGER NOT NULL,
+  head_revision INTEGER NOT NULL,
+  status        TEXT NOT NULL,                -- active|conflicted|closed
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  CHECK (status IN ('active','conflicted','closed'))
+);
+CREATE INDEX IF NOT EXISTS ix_session_branch_status
+  ON session_branch(status, updated_at);
+
 -- 그래프 Merkle 루트와 단조 증가 book 리비전.
 CREATE TABLE IF NOT EXISTS graph_state (
   singleton     INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -279,6 +294,34 @@ CREATE TABLE IF NOT EXISTS cascade_item (
   PRIMARY KEY (run, seq)
 );
 CREATE INDEX IF NOT EXISTS ix_cascade_item_node ON cascade_item(node, run);
+
+-- P6 Tier-2는 commit 트랜잭션 안에서 LLM을 호출하지 않는다. 작업을 원자적으로
+-- 적재하고 별도 worker가 원본 human snapshot + 바뀐 typed source로만 재도출한다.
+CREATE TABLE IF NOT EXISTS cascade_job (
+  id            TEXT PRIMARY KEY,
+  run           TEXT NOT NULL REFERENCES cascade_run(id) ON DELETE CASCADE,
+  node          TEXT NOT NULL,
+  depth         INTEGER NOT NULL,
+  sources       TEXT NOT NULL,                -- JSON [node_id]
+  target_field  TEXT NOT NULL,
+  instruction   TEXT NOT NULL,
+  original_rev  INTEGER NOT NULL,
+  target_rev    INTEGER NOT NULL,
+  source_revs   TEXT NOT NULL,                -- JSON {node_id: rev}
+  max_tokens    INTEGER NOT NULL,
+  status        TEXT NOT NULL,                -- queued|running|proposed|skipped|failed
+  attempts      INTEGER NOT NULL DEFAULT 0,
+  lease_until   TEXT,
+  claim_token   TEXT,
+  proposal      TEXT REFERENCES proposal(id),
+  error         TEXT,
+  ts            TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  CHECK (status IN ('queued','running','proposed','skipped','failed')),
+  UNIQUE (run, node, target_field)
+);
+CREATE INDEX IF NOT EXISTS ix_cascade_job_work
+  ON cascade_job(status, lease_until, ts);
 
 -- 동시 다중 에이전트에서만 사용. 스위칭 운용에서는 불필요
 CREATE TABLE IF NOT EXISTS lease (

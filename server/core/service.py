@@ -1,4 +1,4 @@
-"""Application service for the deterministic P0-P5 graph tools."""
+"""Application service for the P0-P6 graph tools."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .diagnostics import DiagnosticEngine
 from .embedding import EmbeddingIndex
 from .graph_tools import GraphAnalysis, QueryService
 from .ingest import IngestService
+from .lease import LeaseMode, LeaseService
 from .ontology import Ontology, OntologyError
 from .p2 import ContractService, PromiseService, VisibilityService
 from .search import HybridSearch
@@ -45,6 +46,7 @@ class StoryService:
         self.promise_store = PromiseService(self.db_path)
         self.contracts = ContractService(self.db_path)
         self.visibility_store = VisibilityService(self.db_path)
+        self.leases = LeaseService(self.db_path)
         self.writer = WriteService(
             db_path=self.db_path,
             ontology=self.ontology,
@@ -102,6 +104,7 @@ class StoryService:
         model_id: str | None = None,
         host: Literal["claude-code", "codex", "ui", "test"] = "codex",
         on_behalf_of: str | None = None,
+        parent_session_id: str | None = None,
     ) -> dict[str, Any]:
         return self.writer.propose(
             ops=ops,
@@ -112,6 +115,7 @@ class StoryService:
             model_id=model_id,
             host=host,
             on_behalf_of=on_behalf_of,
+            parent_session_id=parent_session_id,
         )
 
     def commit(
@@ -131,6 +135,25 @@ class StoryService:
         if result["status"] == "accepted":
             self.embeddings.sync_all()
         return result
+
+    def lease(
+        self,
+        *,
+        mode: LeaseMode,
+        session_id: str,
+        scope: str | None = None,
+        ttl_sec: int = 900,
+        model_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        return self.leases.manage(
+            mode=mode,
+            session_id=session_id,
+            scope=scope,
+            ttl_sec=ttl_sec,
+            model_id=model_id,
+            note=note,
+        )
 
     def check(
         self,
