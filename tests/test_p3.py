@@ -39,6 +39,8 @@ def write_chapter(
             "kind": "Character",
             "title": "미나",
             "summary": "열쇠를 추적하는 인물",
+            "aliases": ["미나 씨"],
+            "tags": ["POV"],
             "evidence": [character],
         },
         {
@@ -75,7 +77,7 @@ def write_chapter(
                     "predicate": "found",
                     "object": "열쇠",
                 },
-                "visible_to": [{"viewer": "character/미나", "learned_at": 1, "pathway": "direct"}],
+                "visible_to": ["character/미나"],
                 "evidence": [byte_span(raw, text.rstrip("\n"))],
             }
         )

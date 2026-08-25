@@ -269,8 +269,38 @@ class IngestService:
                     }
                 )
             )
-            result[node_id] = dict(normalized.to_value)
+            result[node_id] = self._canonical_payload(dict(normalized.to_value))
         return result
+
+    @staticmethod
+    def _canonical_payload(payload: dict[str, Any]) -> dict[str, Any]:
+        if any(not value.strip() for value in payload.get("aliases", [])):
+            raise IngestError("manifest aliases에는 빈 문자열을 쓸 수 없습니다")
+        if any(not value.strip() for value in payload.get("tags", [])):
+            raise IngestError("manifest tags에는 빈 문자열을 쓸 수 없습니다")
+        payload["aliases"] = sorted(
+            dict.fromkeys(value.strip() for value in payload.get("aliases", []))
+        )
+        payload["tags"] = sorted(
+            dict.fromkeys(
+                value.strip() if value.strip().startswith("#") else f"#{value.strip()}"
+                for value in payload.get("tags", [])
+            )
+        )
+        visibility: list[dict[str, Any]] = []
+        for item in payload.get("visible_to", []):
+            if isinstance(item, str):
+                visibility.append({"viewer": item, "learned_at": None, "pathway": "direct"})
+            else:
+                visibility.append(
+                    {
+                        "viewer": item["viewer"],
+                        "learned_at": item.get("learned_at"),
+                        "pathway": item.get("pathway", "direct"),
+                    }
+                )
+        payload["visible_to"] = sorted(visibility, key=lambda item: item["viewer"])
+        return payload
 
     def _normalize_edges(
         self, edges: list[ExtractedEdge], manifest_nodes: set[str]
