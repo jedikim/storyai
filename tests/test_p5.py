@@ -140,9 +140,7 @@ def test_prose_only_change_hits_typed_early_cutoff(service: StoryService) -> Non
     assert result["cascade"]["status"] == "done"
     assert result["cascade"]["cutoff_hits"] == 1
     assert result["cascade"]["proposals"] == []
-    assert result["cascade"]["items"][0]["reason"].startswith(
-        "typed_projection_unchanged"
-    )
+    assert result["cascade"]["items"][0]["reason"].startswith("typed_projection_unchanged")
 
 
 def test_items_keep_topological_order_when_shortest_depth_ties(
@@ -250,10 +248,13 @@ def test_dry_run_rolls_back_cascade_and_commit_retry_is_idempotent(
     assert dry_run["cascade"]["proposals"]
     assert service.query("SELECT count(*) AS n FROM cascade_run")["rows"][0][0] == before
     assert _node(service, "concept/A")["props"]["value"] == 1
-    assert service.query(
-        "SELECT count(*) AS n FROM proposal WHERE id = :id",
-        params={"id": dry_run["cascade"]["proposals"][0]},
-    )["rows"][0][0] == 0
+    assert (
+        service.query(
+            "SELECT count(*) AS n FROM proposal WHERE id = :id",
+            params={"id": dry_run["cascade"]["proposals"][0]},
+        )["rows"][0][0]
+        == 0
+    )
 
     applied = _update(service, "concept/A", "props.value", 1, 2, "apply-once")
     count = service.query("SELECT count(*) AS n FROM cascade_run")["rows"][0][0]

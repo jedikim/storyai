@@ -33,6 +33,20 @@ class CascadeCandidate:
     rationale: str
 
 
+@dataclass(frozen=True, slots=True)
+class CascadeJob:
+    id: str
+    node: str
+    depth: int
+    sources: list[str]
+    target_field: str
+    instruction: str
+    original_rev: int
+    target_rev: int
+    source_revs: dict[str, int]
+    max_tokens: int
+
+
 @dataclass(slots=True)
 class CascadePlan:
     run_id: str
@@ -44,7 +58,9 @@ class CascadePlan:
     iteration: int = 1
     items: list[dict[str, Any]] = field(default_factory=list)
     candidates: list[CascadeCandidate] = field(default_factory=list)
+    jobs: list[CascadeJob] = field(default_factory=list)
     max_tokens: int = 0
+    tokens_reserved: int = 0
 
 
 class CascadeEngine:
@@ -157,9 +173,7 @@ class CascadeEngine:
         if max_iterations is None:
             max_iterations = self.max_iterations
         if not isinstance(max_iterations, int) or not 1 <= max_iterations <= self.max_iterations:
-            raise ValueError(
-                f"cascade max_iterations는 1..{self.max_iterations} 범위여야 합니다"
-            )
+            raise ValueError(f"cascade max_iterations는 1..{self.max_iterations} 범위여야 합니다")
         trigger_row = connection.execute(
             "SELECT id FROM op WHERE proposal = ? ORDER BY seq LIMIT 1",
             (trigger_proposal,),
@@ -179,9 +193,7 @@ class CascadeEngine:
         for dependency in dependencies:
             adjacency[dependency.source].append(dependency)
 
-        queue: deque[tuple[str, int]] = deque(
-            (node, 0) for node in sorted(trigger_nodes)
-        )
+        queue: deque[tuple[str, int]] = deque((node, 0) for node in sorted(trigger_nodes))
         visited: set[tuple[str, int]] = set()
         dirty: set[str] = set()
         depths: dict[str, int] = {node: 0 for node in trigger_nodes}
@@ -257,15 +269,11 @@ class CascadeEngine:
                 break
 
         cycle_nodes = self._cycle_nodes(trigger_nodes | dirty, traversed_edges)
-        cycle_blocked = bool(cycle_nodes) and (
-            not allow_cycles or plan.iteration > max_iterations
-        )
+        cycle_blocked = bool(cycle_nodes) and (not allow_cycles or plan.iteration > max_iterations)
         if cycle_blocked:
             plan.status = "cycle"
             cycle_reason = (
-                f"bounded_iteration_limit:{max_iterations}"
-                if allow_cycles
-                else "dependency_cycle"
+                f"bounded_iteration_limit:{max_iterations}" if allow_cycles else "dependency_cycle"
             )
             for node in sorted(cycle_nodes):
                 self._record_item(
@@ -318,7 +326,19 @@ class CascadeEngine:
                 target=target,
                 sources=parents[target],
             )
-            if candidate is None:
+            jobs, job_reason = self._llm_jobs(
+                connection,
+                plan=plan,
+                target=target,
+                depth=depths[target],
+                sources=parents[target],
+            )
+            if plan.tokens_reserved + sum(job.max_tokens for job in jobs) > self.max_tokens:
+                plan.status = "budget_exceeded"
+                break
+            plan.tokens_reserved += sum(job.max_tokens for job in jobs)
+            plan.jobs.extend(jobs)
+            if candidate is None and not jobs:
                 if reason == "derived_values_unchanged":
                     plan.cutoff_hits += 1
                 self._record_item(
@@ -326,19 +346,40 @@ class CascadeEngine:
                     node=target,
                     depth=depths[target],
                     status="cutoff" if reason == "derived_values_unchanged" else "dirty",
-                    reason=reason,
+                    reason=job_reason or reason,
                     diagnostics=diagnostics,
                 )
                 continue
-            plan.candidates.append(candidate)
+            if candidate is not None:
+                plan.candidates.append(candidate)
             self._record_item(
                 item_by_node,
                 node=target,
                 depth=depths[target],
-                status="dirty",
-                reason="proposal_ready",
+                status="dirty" if candidate is not None else "queued",
+                reason=(
+                    "proposal_and_tier2_ready"
+                    if candidate is not None and jobs
+                    else "proposal_ready"
+                    if candidate is not None
+                    else "tier2_queued"
+                ),
                 diagnostics=diagnostics,
             )
+        if plan.status == "budget_exceeded":
+            plan.candidates.clear()
+            plan.jobs.clear()
+            for node in sorted(dirty):
+                self._record_item(
+                    item_by_node,
+                    node=node,
+                    depth=depths[node],
+                    status="blocked",
+                    reason="cascade_token_budget_exceeded",
+                    diagnostics=diagnostics,
+                )
+            plan.items = self._ordered_items(item_by_node, order=order)
+            return plan
         plan.items = self._ordered_items(item_by_node, order=order)
         return plan
 
@@ -424,11 +465,14 @@ class CascadeEngine:
             raw_source = contract.get("source")
             source_field = contract.get("source_field")
             target_field = contract.get("target_field")
-            if not all(isinstance(value, str) and value for value in (
-                raw_source,
-                source_field,
-                target_field,
-            )):
+            if not all(
+                isinstance(value, str) and value
+                for value in (
+                    raw_source,
+                    source_field,
+                    target_field,
+                )
+            ):
                 continue
             try:
                 source = normalize_node_id(raw_source, self.ontology)
@@ -484,9 +528,7 @@ class CascadeEngine:
         operations.sort(key=lambda item: (str(item["field"]), str(item["idem_key"])))
         read_set = []
         for node in sorted(read_nodes):
-            row = connection.execute(
-                "SELECT rev FROM live_node WHERE id = ?", (node,)
-            ).fetchone()
+            row = connection.execute("SELECT rev FROM live_node WHERE id = ?", (node,)).fetchone()
             if row is None:
                 return None, f"read_source_not_live:{node}"
             read_set.append({"node": node, "rev": int(row["rev"])})
@@ -499,6 +541,136 @@ class CascadeEngine:
             ),
             "proposal_ready",
         )
+
+    def _llm_jobs(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        plan: CascadePlan,
+        target: str,
+        depth: int,
+        sources: set[str],
+    ) -> tuple[list[CascadeJob], str | None]:
+        if depth > 2:
+            return [], "tier2_max_hops_exceeded"
+        target_row = connection.execute(
+            "SELECT rev, props FROM live_node WHERE id = ?", (target,)
+        ).fetchone()
+        if target_row is None:
+            return [], "target_not_live"
+        try:
+            contracts = json.loads(target_row["props"] or "{}").get("_rederive")
+        except json.JSONDecodeError:
+            return [], "invalid_target_props"
+        if not isinstance(contracts, list) or not contracts:
+            return [], None
+        original_rev = self._latest_human_revision(connection, target)
+        if original_rev is None:
+            return [], "tier2_requires_human_origin"
+
+        jobs: list[CascadeJob] = []
+        seen_fields: set[str] = set()
+        invalid = 0
+        for contract in contracts:
+            if not isinstance(contract, dict):
+                invalid += 1
+                continue
+            raw_sources = contract.get("sources")
+            if raw_sources is None and contract.get("source") is not None:
+                raw_sources = [contract["source"]]
+            target_field = contract.get("target_field")
+            instruction = contract.get("instruction")
+            max_tokens = contract.get("max_tokens", 1200)
+            if (
+                not isinstance(raw_sources, list)
+                or not raw_sources
+                or not isinstance(target_field, str)
+                or not self._safe_llm_target(target_field)
+                or not isinstance(instruction, str)
+                or not instruction.strip()
+                or len(instruction) > 2000
+                or not isinstance(max_tokens, int)
+                or isinstance(max_tokens, bool)
+                or not 1 <= max_tokens <= self.max_tokens
+                or target_field in seen_fields
+            ):
+                invalid += 1
+                continue
+            normalized_sources: list[str] = []
+            try:
+                for raw_source in raw_sources:
+                    if not isinstance(raw_source, str):
+                        raise ValueError("source must be a string")
+                    normalized_sources.append(normalize_node_id(raw_source, self.ontology))
+            except ValueError:
+                invalid += 1
+                continue
+            normalized_sources = sorted(set(normalized_sources))
+            if not normalized_sources or not set(normalized_sources).issubset(sources):
+                invalid += 1
+                continue
+            source_revs: dict[str, int] = {}
+            missing = False
+            for source in normalized_sources:
+                row = connection.execute(
+                    "SELECT rev FROM live_node WHERE id = ?", (source,)
+                ).fetchone()
+                if row is None:
+                    missing = True
+                    break
+                source_revs[source] = int(row["rev"])
+            if missing:
+                invalid += 1
+                continue
+            seen_fields.add(target_field)
+            identity = canonical_json(
+                {
+                    "run": plan.run_id,
+                    "node": target,
+                    "field": target_field,
+                    "sources": source_revs,
+                }
+            )
+            jobs.append(
+                CascadeJob(
+                    id="job/" + hashlib.sha256(identity.encode()).hexdigest(),
+                    node=target,
+                    depth=depth,
+                    sources=normalized_sources,
+                    target_field=target_field,
+                    instruction=instruction.strip(),
+                    original_rev=original_rev,
+                    target_rev=int(target_row["rev"]),
+                    source_revs=source_revs,
+                    max_tokens=max_tokens,
+                )
+            )
+        if jobs:
+            return jobs, None
+        return [], "invalid_tier2_contract" if invalid else None
+
+    @staticmethod
+    def _latest_human_revision(
+        connection: sqlite3.Connection,
+        node: str,
+    ) -> int | None:
+        rows = connection.execute(
+            "SELECT rev, snapshot FROM node_revision WHERE node = ? ORDER BY rev DESC",
+            (node,),
+        ).fetchall()
+        for row in rows:
+            try:
+                if json.loads(row["snapshot"]).get("origin") == "human":
+                    return int(row["rev"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+        return None
+
+    @classmethod
+    def _safe_llm_target(cls, field: str) -> bool:
+        if field in {"title", "summary", "body"}:
+            return True
+        return cls._safe_field(field, target=True)
 
     @classmethod
     def _safe_field(cls, field: str, *, target: bool) -> bool:
@@ -523,9 +695,7 @@ class CascadeEngine:
             "SELECT snapshot FROM node_revision WHERE node = ? AND rev = ?",
             (node, historical_rev),
         ).fetchone()
-        current_row = connection.execute(
-            "SELECT tx_to FROM node WHERE id = ?", (node,)
-        ).fetchone()
+        current_row = connection.execute("SELECT tx_to FROM node WHERE id = ?", (node,)).fetchone()
         if old_row is None or current_row is None or current_row["tx_to"] is not None:
             return True
         try:
@@ -599,7 +769,7 @@ class CascadeEngine:
         reason: str,
         diagnostics: list[dict[str, Any]],
     ) -> None:
-        rank = {"cutoff": 0, "locked": 1, "dirty": 2, "blocked": 3}
+        rank = {"cutoff": 0, "locked": 1, "queued": 2, "dirty": 2, "blocked": 3}
         existing = items.get(node)
         if existing is not None and rank.get(existing["status"], 0) > rank.get(status, 0):
             return

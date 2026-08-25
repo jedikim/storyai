@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from .branch import BranchService
 from .cascade import CascadeCandidate, CascadeEngine, CascadePlan
 from .database import connect_write
 from .diagnostics import DiagnosticEngine
@@ -51,6 +52,7 @@ class WriteService:
         with self._lock, connect_write(self.db_path) as connection:
             ensure_graph_state(connection)
             self.cascade.backfill(connection)
+            BranchService.backfill(connection, datetime.now(UTC).isoformat())
 
     def propose(
         self,
@@ -63,6 +65,7 @@ class WriteService:
         model_id: str | None = None,
         host: Literal["claude-code", "codex", "ui", "test"] = "codex",
         on_behalf_of: str | None = None,
+        parent_session_id: str | None = None,
     ) -> dict[str, Any]:
         request = ProposalInput.model_validate(
             {
@@ -74,6 +77,7 @@ class WriteService:
                 "model_id": model_id,
                 "host": host,
                 "on_behalf_of": on_behalf_of,
+                "parent_session_id": parent_session_id,
             }
         )
         operations = [self.applier.normalize(operation) for operation in request.ops]
@@ -106,7 +110,14 @@ class WriteService:
                 "SELECT result FROM commit_record WHERE proposal = ?", (proposal_id,)
             ).fetchone()
             if existing is not None:
-                return json.loads(existing["result"])
+                result = json.loads(existing["result"])
+                if "branch" not in result:
+                    stored = connection.execute(
+                        "SELECT session_id FROM proposal WHERE id = ?", (proposal_id,)
+                    ).fetchone()
+                    if stored is not None and stored["session_id"]:
+                        result["branch"] = BranchService.get(connection, str(stored["session_id"]))
+                return result
             proposal = connection.execute(
                 "SELECT * FROM proposal WHERE id = ?", (proposal_id,)
             ).fetchone()
@@ -130,8 +141,14 @@ class WriteService:
                     "root_cid": str(graph["root_cid"]),
                     "diagnostics": [],
                     "cascade_id": None,
+                    "branch": BranchService.get(connection, str(proposal["session_id"])),
                 }
                 if mode == "apply":
+                    result["branch"] = BranchService.conflicted(
+                        connection,
+                        str(proposal["session_id"]),
+                        datetime.now(UTC).isoformat(),
+                    )
                     connection.execute(
                         "UPDATE proposal SET status = 'rejected' WHERE id = ?", (proposal_id,)
                     )
@@ -183,9 +200,7 @@ class WriteService:
                     if isinstance(item, dict) and item.get("target")
                 }
                 forced_nodes = {
-                    operation.target
-                    for operation in operations
-                    if operation.verb == "INVALIDATE"
+                    operation.target for operation in operations if operation.verb == "INVALIDATE"
                 }
                 forced_nodes.update(
                     str(operation.to_value)
@@ -210,6 +225,12 @@ class WriteService:
                 )
                 self._persist_cascade(connection, cascade, now)
                 graph_revision, root_cid = advance_graph_state(connection, now)
+                branch = BranchService.accepted(
+                    connection,
+                    str(proposal["session_id"]),
+                    graph_revision,
+                    now,
+                )
                 result = {
                     "proposal_id": proposal_id,
                     "status": "dry_run" if mode == "dry_run" else "accepted",
@@ -220,6 +241,7 @@ class WriteService:
                     "diagnostics": diagnostics,
                     "cascade_id": cascade.run_id,
                     "cascade": self._cascade_result(cascade),
+                    "branch": branch,
                 }
                 if mode == "dry_run":
                     connection.execute("ROLLBACK TO storyai_dry_run")
@@ -259,6 +281,12 @@ class WriteService:
         if duplicate is not None:
             return duplicate
         reads = list(request.read_set)
+        branch = BranchService.ensure(
+            connection,
+            session_id=request.session_id,
+            parent=request.parent_session_id,
+            now=now,
+        )
         self._require_read_coverage(operations, reads)
         conflicts = self._detect_conflicts(connection, operations, reads)
         pending = self._pending_overlap(connection, operations)
@@ -325,6 +353,8 @@ class WriteService:
         )
         if not conflicts:
             self._simulate(connection, proposal_id, request, operations, now)
+        else:
+            branch = BranchService.conflicted(connection, request.session_id, now)
         return {
             "proposal_id": proposal_id,
             "status": "conflicted" if conflicts else "open",
@@ -332,6 +362,7 @@ class WriteService:
             "reasons": list(decision.reasons),
             "conflicts": conflicts,
             "pending_overlap": pending,
+            "branch": branch,
         }
 
     def _materialize_cascade(
@@ -373,6 +404,11 @@ class WriteService:
         trigger_proposal: str,
         now: str,
     ) -> dict[str, Any]:
+        trigger = connection.execute(
+            "SELECT session_id FROM proposal WHERE id = ?", (trigger_proposal,)
+        ).fetchone()
+        if trigger is None or not trigger["session_id"]:
+            raise ProposalError(f"cascade trigger session을 찾을 수 없습니다: {trigger_proposal}")
         request = ProposalInput.model_validate(
             {
                 "ops": candidate.ops,
@@ -382,6 +418,7 @@ class WriteService:
                 "actor_kind": "cascade",
                 "host": "codex",
                 "on_behalf_of": self._on_behalf_of(connection, trigger_proposal),
+                "parent_session_id": str(trigger["session_id"]),
             }
         )
         operations = [self.applier.normalize(operation) for operation in request.ops]
@@ -441,6 +478,32 @@ class WriteService:
                     canonical_json(item["diagnostics"]),
                 ),
             )
+        for job in plan.jobs:
+            connection.execute(
+                """
+                INSERT INTO cascade_job(
+                  id, run, node, depth, sources, target_field, instruction,
+                  original_rev, target_rev, source_revs, max_tokens, status, attempts,
+                  lease_until, claim_token, proposal, error, ts, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 0,
+                          NULL, NULL, NULL, NULL, ?, ?)
+                """,
+                (
+                    job.id,
+                    plan.run_id,
+                    job.node,
+                    job.depth,
+                    canonical_json(job.sources),
+                    job.target_field,
+                    job.instruction,
+                    job.original_rev,
+                    job.target_rev,
+                    canonical_json(job.source_revs),
+                    job.max_tokens,
+                    now,
+                    now,
+                ),
+            )
 
     @staticmethod
     def _cascade_result(plan: CascadePlan) -> dict[str, Any]:
@@ -451,9 +514,11 @@ class WriteService:
             "cutoff_hits": plan.cutoff_hits,
             "iteration": plan.iteration,
             "max_tokens": plan.max_tokens,
+            "tokens_reserved": plan.tokens_reserved,
             "proposals": [
                 item["proposal_id"] for item in plan.items if item["proposal_id"] is not None
             ],
+            "jobs": [job.id for job in plan.jobs],
             "items": plan.items,
         }
 
@@ -655,7 +720,8 @@ class WriteService:
     ) -> dict[str, Any]:
         row = connection.execute(
             """
-            SELECT p.status, a.risk, a.reasons, a.conflicts, a.pending_overlap
+            SELECT p.status, p.session_id, a.risk, a.reasons,
+                   a.conflicts, a.pending_overlap
             FROM proposal AS p JOIN proposal_assessment AS a ON a.proposal = p.id
             WHERE p.id = ?
             """,
@@ -672,6 +738,7 @@ class WriteService:
             "conflicts": conflicts,
             "pending_overlap": json.loads(row["pending_overlap"]),
             "idempotent": idempotent,
+            "branch": BranchService.get(connection, str(row["session_id"])),
         }
 
     def _load_operations(self, connection: sqlite3.Connection, proposal_id: str) -> list[Operation]:

@@ -1,4 +1,4 @@
-"""FastMCP stdio server exposing the deterministic P0-P5 tool surface."""
+"""FastMCP stdio server exposing the P0-P6 story graph tool surface."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from .tools.get import get
 from .tools.graph_schema import graph_schema
 from .tools.impact import impact
 from .tools.ingest import ingest
+from .tools.lease import lease
 from .tools.neighborhood import neighborhood
 from .tools.outline import outline
 from .tools.promises import promises
@@ -57,6 +58,10 @@ TOOL_DESCRIPTIONS = {
         "원고 전체와 명시적 ID binding manifest의 해시·UTF-8 byte span·Scene 분할을 검증하고 "
         "증분 변경 Proposal만 만듭니다. live 그래프는 commit 전까지 바뀌지 않습니다."
     ),
+    "lease": (
+        "동시 에이전트의 작업 주소를 TTL이 있는 권고 리스로 선점·해제·조회합니다. "
+        "겹치는 scope는 충돌로 반환하지만 그래프 쓰기 자체를 잠그지는 않습니다."
+    ),
     "neighborhood": (
         "의도 검색 seed와 명시적 anchor에서 hard 간선 1-hop을 확장해 token budget 안의 "
         "집필 컨텍스트 패킷을 만듭니다."
@@ -99,6 +104,7 @@ def create_server() -> FastMCP:
         "graph_schema": graph_schema,
         "impact": impact,
         "ingest": ingest,
+        "lease": lease,
         "neighborhood": neighborhood,
         "outline": outline,
         "propose": propose,
@@ -109,7 +115,7 @@ def create_server() -> FastMCP:
     }
     for name in sorted(functions):
         annotations = {
-            "readOnlyHint": name not in {"propose", "commit", "ingest"},
+            "readOnlyHint": name not in {"propose", "commit", "ingest", "lease"},
             "destructiveHint": name == "commit",
             "idempotentHint": True,
             "openWorldHint": False,

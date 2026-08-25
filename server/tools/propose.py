@@ -14,6 +14,7 @@ def propose(
     model_id: str | None = None,
     host: Literal["claude-code", "codex", "ui", "test"] = "codex",
     on_behalf_of: str | None = None,
+    parent_session_id: str | None = None,
 ) -> dict[str, Any]:
     """Record an atomic mutation proposal without changing live graph state."""
     return get_service().propose(
@@ -25,4 +26,5 @@ def propose(
         model_id=model_id,
         host=host,
         on_behalf_of=on_behalf_of,
+        parent_session_id=parent_session_id,
     )

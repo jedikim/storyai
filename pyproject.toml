@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "storyai"
-version = "0.6.0"
+version = "0.7.0"
 description = "A narrative knowledge graph and MCP server for long-form fiction continuity."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -27,6 +27,7 @@ dev = [
 [project.scripts]
 storyai-load-bible = "server.load_bible:main"
 storyai-consolidate = "server.consolidate:main"
+storyai-cascade = "server.cascade_worker:main"
 storyai-server = "server.app:main"
 storyai-ui = "server.ui:main"
 

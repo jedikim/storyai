@@ -1,6 +1,6 @@
 {
   "$comment": "storyai MCP 툴 15개. 문서: docs/02-설계서.html#tools",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "transport": "stdio",
   "budget": {
     "target_tokens": 8000,
@@ -79,7 +79,8 @@
     { "name": "propose", "group": "mutate", "readOnly": false, "destructive": false,
       "summary": "변경 제안 — 원자적",
       "params": { "ops": "Op[]", "read_set": "[{ node, rev }]",
-                  "rationale": "string", "session_id": "string" },
+                  "rationale": "string", "session_id": "string",
+                  "parent_session_id": "string?" },
       "returns": "{ proposal_id, status, conflicts?[], pending_overlap?[] }",
       "op_verbs": ["ADD", "UPDATE", "INVALIDATE", "LINK", "UNLINK"],
       "rule": "빈 read_set은 거부" },
@@ -99,7 +100,8 @@
     { "name": "lease", "group": "mutate", "readOnly": false, "destructive": false,
       "summary": "작업 구역 선점 — 동시 다중 에이전트에서만 필요",
       "params": { "mode": "acquire|release|list", "scope": "string?",
-                  "ttl_sec": "int=900", "session_id": "string", "note": "string?" },
+                  "ttl_sec": "int=900", "session_id": "string",
+                  "model_id": "string?", "note": "string?" },
       "returns": "{ lease_id, scope, holder, expires_at, conflicts?[] }",
       "note": "스위칭(번갈아 사용) 운용에서는 불필요. 권고이지 잠금이 아님" },
 

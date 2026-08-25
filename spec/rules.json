@@ -1,6 +1,6 @@
 {
   "$comment": "진단 규칙 카탈로그. ConStory-Bench 5범주 19서브타입 기반. 문서: docs/02-설계서.html#cascade",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "tiers": {
     "1": "결정론 — 순수 그래프/SQL 연산, LLM 호출 0회",
     "2": "LLM 필요 — Tier 1이 플래그한 노드에만"
@@ -109,7 +109,9 @@
                  "visited_key": ["node_id", "rev"] },
     "cycles": { "default": "reject", "opt_in": "bounded_iteration", "max_iterations": 3 },
     "llm_tier2": { "max_hops": 2, "rederive_from": "원본 인간 작성 노드 + 바뀐 사실",
-                   "never": "직전 도출 결과를 다시 입력으로" },
+                   "never": "직전 도출 결과를 다시 입력으로",
+                   "execution": "commit 밖의 durable cascade_job worker",
+                   "contract": ["sources", "target_field", "instruction", "max_tokens"] },
     "output": "항상 Proposal. 자동 커밋 없음"
   }
 }

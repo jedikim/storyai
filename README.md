@@ -44,7 +44,7 @@ spec/ontology.json   노드 18종 · 간선 28종 · 태그 · 삼중 시간축 
 spec/tools.json      MCP 툴 15개 시그니처 · 예산 · 위험 등급 정책
 spec/rules.json      진단 규칙 26개 (Tier 1 결정론 / Tier 2 LLM) · 전파 정책
 spec/policy.json     P1 변경 위험 등급 · 잠금 · 캐스케이드 임계값
-spec/schema.sql      DDL — 테이블 22 · 뷰 5 · 인덱스 18
+spec/schema.sql      DDL — 테이블 27 · 뷰 5 · 인덱스 23
 ```
 
 `sqlite3 store/story.db < spec/schema.sql` 로 바로 적용됩니다.
@@ -89,17 +89,16 @@ python3 build/build.py
 ## 구현 현황
 
 **P0 읽기 전용 인덱스**, **P1 쓰기 경로**, **P2 복선·진단**, **P3 추출·검색**, **P4 UI**,
-**P5 Domino v1**이
-구현되어 있습니다. MCP 도구 14개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
+**P5 Domino v1**, **P6 Domino v2·다중 에이전트 운영**이 구현되어 있습니다.
+MCP 도구 15개를 제공하며, 모든 쓰기는 제안 기록과 `read_set` 충돌
 판정을 거쳐 단일 SQLite 커밋 레인에서 원자적으로 적용됩니다. P3는 명시적 ID binding
 manifest와 UTF-8 byte span을 강제하고, BM25와 로컬 sqlite-vec 결과를 RRF로 결합합니다.
 P4는 같은 코어를 감싼 FastAPI REST 계층과 React Flow 그래프, F–T–P 복선 보드,
 이중 시간축, 출처를 구분하는 inline diff 검수 큐를 제공합니다.
 P5는 역방향 `read_set` 의존성, typed projection 조기 종료, 깊이·노드 예산과 순환 차단을
 적용하고, 결정론적 재도출 결과도 자동 반영하지 않고 `cascade` Proposal로 남깁니다.
-
-다음은 **P6 — 운영·다중 에이전트 강화**입니다. 자세한 분해는
-[개발계획서 §P6](docs/03-개발계획서.html#p6)를 따릅니다.
+P6는 TTL advisory lease, 부모가 있는 에이전트 session branch, 그리고 commit 밖의 durable
+worker에서 실행되는 Tier-2 재도출을 추가합니다. P0~P6 로드맵이 모두 구현되었습니다.
 
 ## 개발 실행
 
@@ -116,6 +115,7 @@ YAML 메타데이터만 읽으며 내용을 추측하거나 자동 추출하지 
 ```bash
 .venv/bin/python -m server.load_bible
 .venv/bin/python -m server.consolidate
+.venv/bin/storyai-cascade --limit 100
 .venv/bin/python -m pytest
 server/run-mcp.sh
 ```
@@ -188,3 +188,41 @@ LLM 없는 재도출은 대상 노드 `props._derive`에 명시한 typed copy만
 
 결과는 live 그래프에 바로 적용되지 않습니다. commit 응답의 `cascade.proposals`에
 `actor_kind="cascade"`인 새 Proposal이 들어가며, 이를 별도로 검수하고 commit해야 합니다.
+
+## P6 운영 계약
+
+동시 작업 전에는 `lease(mode="acquire", scope="scene/A2.C14.*", ttl_sec=900,
+session_id="session/…")`로 권고 리스를 얻습니다. 리스는 겹치는 exact/wildcard scope를
+충돌로 알리고 만료 항목을 자동 정리하지만, 그래프 쓰기를 강제로 막지는 않습니다.
+`propose(parent_session_id="session/parent")`는 새 session branch의 부모와 시작 graph
+revision을 기록합니다. commit된 revision은 해당 branch head로 이동하고 충돌 거부된
+branch는 `conflicted`로 표시됩니다.
+
+Tier-2가 필요한 대상은 human-origin 노드의 `props._rederive`에 계약을 둡니다.
+
+```json
+{
+  "_rederive": [{
+    "sources": ["fact/source"],
+    "target_field": "summary",
+    "instruction": "바뀐 구조 사실에 맞춰 요약을 다시 작성한다.",
+    "max_tokens": 1200
+  }]
+}
+```
+
+commit은 `cascade_job`만 원자적으로 적재합니다. worker는 최신 human snapshot 전문과
+바뀐 source의 typed projection만 provider에 보내며, 직전 cascade 결과는 입력하지
+않습니다. provider는 아래 JSON webhook 계약으로 연결합니다.
+
+```bash
+export STORYAI_REDERIVE_ENDPOINT=https://llm-gateway.example/rederive
+export STORYAI_REDERIVE_API_KEY=...
+.venv/bin/storyai-cascade --limit 100
+```
+
+요청에는 `original_human_node`, `changed_sources`, `instruction`, `target_field`,
+`max_tokens`가 들어가고 응답은 `{ "value": ..., "model_id": "provider/model" }`입니다.
+모델 ID는 Proposal provenance에 보존됩니다. worker 결과 역시 새
+`actor_kind="cascade"` Proposal일 뿐이며 자동 commit되지 않습니다. endpoint는 HTTPS만
+허용하고, 로컬 테스트에 한해 loopback HTTP를 허용합니다.
